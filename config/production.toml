@@ -1,0 +1,13 @@
+addr="127.0.0.1:6389"
+
+#log_path: /Users/flike/src 
+#日志级别
+log_level="debug"
+
+[mysql]
+host="127.0.0.1"
+port=3306
+name="dump_test"
+user="root"
+password="cclehui06156041"
+max_idle_conns=4
