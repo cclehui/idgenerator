@@ -5,34 +5,29 @@ import(
     //"time"
     //"os"
     "strconv"
-    "io/ioutil"
     "idGenerator"
+    "idGenerator/config"
+    "idGenerator/persistent"
     "github.com/gin-gonic/gin"
-    "github.com/toml"
 )
 
 var idWorkerMap = make(map[int]*idGenerator.IdWorker)
 
 func main() {
 
-    config_file := "./config/production.toml"
+    config := config.GetInstance("");
 
-    data, err := ioutil.ReadFile(config_file)
-    if err != nil {
-        panic("配置文件不存在")
-    }
+    db := persistent.GetMysqlDB(
+                config.Mysql.User,
+                config.Mysql.Password,
+                config.Mysql.Host,
+                config.Mysql.Port,
+                config.Mysql.Name,
+            )
 
-    fmt.Println(string(data))
-
-    //配置文件
-    var config idGenerator.Config
-
-    if _, err := toml.Decode(string(data), &config); err != nil {
-        panic("配置格式错误")
-    }
-
-    fmt.Printf("%#v", config.LogPath)
-    return
+    fmt.Printf("%#v\n", config.Addr);
+    fmt.Printf("%#v\n", db);
+    return;
 
 
     r := gin.Default()

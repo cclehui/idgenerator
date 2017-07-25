@@ -5,7 +5,7 @@ import(
     //"time"
     //"os"
     "strconv"
-    "./idGenerator"
+    "idGenerator"
     "github.com/gin-gonic/gin"
 )
 
