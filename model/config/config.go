@@ -2,7 +2,7 @@ package config
 
 import (
     "io/ioutil"
-    "github.com/toml"
+    "github.com/BurntSushi/toml"
 );
 
 type Config struct {

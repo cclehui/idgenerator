@@ -9,7 +9,7 @@
 
 // Copyright (C) 2017 by cclehui
 
-package idGenerator
+package model
 
 import (
 	"errors"
