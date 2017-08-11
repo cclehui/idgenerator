@@ -4,12 +4,16 @@ import idGenerator "idGenerator/model"
 
 import (
     "github.com/gin-gonic/gin"
-    "idGenerator/model/cmap"
+    //"idGenerator/model/cmap"
+    "idGenerator/model"
     "strconv"
     "fmt"
 )
 
-func IdWorkerAction(idWorkerMap *cmap.ConcurrentMap, request *gin.Context ) {
+func IdWorkerAction(request *gin.Context ) {
+
+    idWorkerMap := model.Application.GetIdWorkerMap();
+
     workerId := request.Params.ByName("id");
     currentWorker, ok := idWorkerMap.Get(workerId);
     value, typeOk := currentWorker.(idGenerator.IdWorker);

@@ -10,15 +10,20 @@ import(
     "idGenerator/model/persistent"
     "github.com/gin-gonic/gin"
     "idGenerator/model/cmap"
+    "idGenerator/model"
     "idGenerator/controller"
 )
 
 
 //每个业务对应一个 key 全局唯一
 //var idWorkerMap = make(map[int]*idGenerator.IdWorker)
-var idWorkerMap = cmap.New();
+//var idWorkerMap = cmap.New();
 
 func main() {
+    //初始化application
+    application := model.GetApplication();
+    application.idWorkerMap = cmap.New();
+
     fmt.Println("11111111111");
 
     config := config.GetInstance("");
