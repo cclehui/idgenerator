@@ -3,11 +3,12 @@ package main
 //import  idGenerator "idGenerator/model"
 
 import(
-    "fmt"
+    //"fmt"
     //"time"
     //"os"
     //"idGenerator/model/config"
     //"idGenerator/model/persistent"
+    "idGenerator/model/logger"
     "github.com/gin-gonic/gin"
     "idGenerator/model"
     "idGenerator/controller"
@@ -20,6 +21,7 @@ import(
 
 func main() {
 
+    logger := logger.GetLogger();
 
     //初始化application
     application := model.GetApplication();
@@ -27,7 +29,7 @@ func main() {
     //加载配置
     application.InitConfig("");
 
-    fmt.Printf("application inited:%#v\n", application.ConfigData);
+    logger.Printf("application inited:%#v\n", application.ConfigData);
 
     r := gin.Default()
 
