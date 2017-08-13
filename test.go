@@ -6,10 +6,9 @@ import(
     "fmt"
     //"time"
     //"os"
-    "idGenerator/model/config"
-    "idGenerator/model/persistent"
+    //"idGenerator/model/config"
+    //"idGenerator/model/persistent"
     "github.com/gin-gonic/gin"
-    "idGenerator/model/cmap"
     "idGenerator/model"
     "idGenerator/controller"
 )
@@ -20,25 +19,15 @@ import(
 //var idWorkerMap = cmap.New();
 
 func main() {
+
+
     //初始化application
     application := model.GetApplication();
-    application.idWorkerMap = cmap.New();
 
-    fmt.Println("11111111111");
+    //加载配置
+    application.InitConfig("");
 
-    config := config.GetInstance("");
-
-    db := persistent.GetMysqlDB(
-                config.Mysql.User,
-                config.Mysql.Password,
-                config.Mysql.Host,
-                config.Mysql.Port,
-                config.Mysql.Name,
-            )
-
-    fmt.Printf("%#v\n", config.Addr);
-    fmt.Printf("%#v\n", db);
-    return;
+    fmt.Printf("application inited:%#v\n", application.ConfigData);
 
     r := gin.Default()
 
@@ -52,7 +41,7 @@ func main() {
     r.GET("/worker/:id", controller.IdWorkerAction)
 
     // Listen and Server in 0.0.0.0:8182
-    //r.Run(":8182")
+    r.Run(":8182")
 
-    r.Run() // listen and serve on 0.0.0.0:8080
+    //r.Run() // listen and serve on 0.0.0.0:8080
 }

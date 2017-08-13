@@ -45,10 +45,10 @@ func NewIdWorker(workerid int64) (iw *IdWorker, err error) {
 
 	iw.maxWorkerId = getMaxWorkerId()
 
-    fmt.Printf("%b", iw.maxWorkerId);
+    fmt.Printf("NewIdWorker, max worker ID:%#v, current:%#v\n", iw.maxWorkerId, workerid);
 
 	if workerid > iw.maxWorkerId || workerid < 0 {
-		return nil, errors.New("worker not fit")
+		return nil, errors.New("worker id not fit")
 	}
 	iw.workerId = workerid
 	iw.lastTimeStamp = -1

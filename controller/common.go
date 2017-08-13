@@ -1,6 +1,6 @@
 package controller
 
-import idGenerator "idGenerator/model"
+//import idGenerator "idGenerator/model"
 
 import (
     "github.com/gin-gonic/gin"
@@ -12,11 +12,12 @@ import (
 
 func IdWorkerAction(request *gin.Context ) {
 
-    idWorkerMap := model.Application.GetIdWorkerMap();
+    idWorkerMap := model.GetApplication().GetIdWorkerMap();
 
     workerId := request.Params.ByName("id");
     currentWorker, ok := idWorkerMap.Get(workerId);
-    value, typeOk := currentWorker.(idGenerator.IdWorker);
+
+    value, typeOk := currentWorker.(*model.IdWorker);
 
     if ok && typeOk {
         //获取下一个递增id
@@ -28,7 +29,7 @@ func IdWorkerAction(request *gin.Context ) {
 
         id, _ := strconv.Atoi(workerId);
 
-        idWorker, err := idGenerator.NewIdWorker(int64(id))
+        idWorker, err := model.NewIdWorker(int64(id))
         if err == nil {
             nid, _ := idWorker.NextId();
             idWorkerMap.Set(workerId, idWorker);
