@@ -15,7 +15,8 @@ import (
 	"errors"
 	"sync"
 	"time"
-	"fmt"
+	//"fmt"
+    "idGenerator/model/logger"
 )
 
 const (
@@ -30,8 +31,8 @@ const (
 	CMaxWorker    = 0x3ff // equal as getMaxWorkerId()
 )
 
-// IdWorker Struct
-type IdWorker struct {
+// SnowFlakeIdWorker Struct
+type SnowFlakeIdWorker struct {
 	workerId      int64
 	lastTimeStamp int64
 	sequence      int64
@@ -39,21 +40,24 @@ type IdWorker struct {
 	lock          *sync.Mutex
 }
 
-// NewIdWorker Func: Generate NewIdWorker with Given workerid
-func NewIdWorker(workerid int64) (iw *IdWorker, err error) {
-	iw = new(IdWorker)
+// NewSnowFlakeIdWorker Func: Generate NewSnowFlakeIdWorker with Given workerid
+func NewSnowFlakeIdWorker(workerid int64) (iw *SnowFlakeIdWorker, err error) {
+	maxWorkerId := getMaxWorkerId()
 
-	iw.maxWorkerId = getMaxWorkerId()
-
-    fmt.Printf("NewIdWorker, max worker ID:%#v, current:%#v\n", iw.maxWorkerId, workerid);
-
-	if workerid > iw.maxWorkerId || workerid < 0 {
-		return nil, errors.New("worker id not fit")
+	if workerid > maxWorkerId || workerid < 0 {
+		return nil, errors.New("workerid 异常")
 	}
+
+    logger := logger.GetLogger();
+    logger.Printf("NewSnowFlakeIdWorker, max worker ID:%#v, current:%#v\n", maxWorkerId, workerid);
+
+	iw = new(SnowFlakeIdWorker)
+    iw.maxWorkerId = maxWorkerId
 	iw.workerId = workerid
 	iw.lastTimeStamp = -1
 	iw.sequence = 0
 	iw.lock = new(sync.Mutex)
+
 	return iw, nil
 }
 
@@ -66,11 +70,11 @@ func getSequenceMask() int64 {
 }
 
 // return in ms
-func (iw *IdWorker) timeGen() int64 {
+func (iw *SnowFlakeIdWorker) timeGen() int64 {
 	return time.Now().UnixNano() / 1000 / 1000
 }
 
-func (iw *IdWorker) timeReGen(last int64) int64 {
+func (iw *SnowFlakeIdWorker) timeReGen(last int64) int64 {
 	ts := time.Now().UnixNano()
 	for {
 		if ts < last {
@@ -83,7 +87,7 @@ func (iw *IdWorker) timeReGen(last int64) int64 {
 }
 
 // NewId Func: Generate next id
-func (iw *IdWorker) NextId() (ts int64, err error) {
+func (iw *SnowFlakeIdWorker) NextId() (ts int64, err error) {
 	iw.lock.Lock()
 	defer iw.lock.Unlock()
 	ts = iw.timeGen()

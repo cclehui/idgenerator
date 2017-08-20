@@ -6,38 +6,45 @@ import (
     "github.com/gin-gonic/gin"
     //"idGenerator/model/cmap"
     "idGenerator/model"
+    //"idGenerator/model/logger"
+    "idGenerator/model/jsonApi"
     "strconv"
-    "fmt"
+    //"fmt"
 )
 
-func IdWorkerAction(request *gin.Context ) {
+func IdWorkerAction(context *gin.Context ) {
+    workerSource := context.Params.ByName("id");
+    workerid, err := strconv.Atoi(workerSource);
+
+    if err != nil {
+        jsonApi.Fail(context, err.Error(), 100001)
+        return
+    }
 
     idWorkerMap := model.GetApplication().GetIdWorkerMap();
+    currentWorker, hasOld := idWorkerMap.Get(workerSource);
 
-    workerId := request.Params.ByName("id");
-    currentWorker, ok := idWorkerMap.Get(workerId);
-
-    value, typeOk := currentWorker.(*model.IdWorker);
-
-    if ok && typeOk {
+    if hasOld {
         //获取下一个递增id
-        nid, _ := value.NextId();
-
-        request.JSON(200, gin.H{"id": nid})
-
-    } else {
-
-        id, _ := strconv.Atoi(workerId);
-
-        idWorker, err := model.NewIdWorker(int64(id))
-        if err == nil {
-            nid, _ := idWorker.NextId();
-            idWorkerMap.Set(workerId, idWorker);
-
-            request.JSON(200, gin.H{"id": nid})
-
-        } else {
-            fmt.Println(err)
+        workerInstance, typeOk := currentWorker.(*model.SnowFlakeIdWorker);
+        if !typeOk {
+            jsonApi.Fail(context, "workerInstance类型错误", 100002)
+            return;
         }
+
+        nid, _ := workerInstance.NextId();
+        jsonApi.Success(context, gin.H{"id": nid})
+        return
     }
+
+    //获取新的
+    workerInstance, err := model.NewSnowFlakeIdWorker(int64(workerid))
+    if err != nil {
+        jsonApi.Fail(context, err.Error(), 100001)
+        return
+    }
+
+    nid, _ := workerInstance.NextId();
+    idWorkerMap.Set(workerSource, workerInstance);
+    jsonApi.Success(context, gin.H{"id": nid})
 }
