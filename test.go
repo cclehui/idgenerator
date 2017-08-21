@@ -39,8 +39,11 @@ func main() {
         })
     })
 
-    // Get ID
-    r.GET("/worker/:id", controller.IdWorkerAction)
+    // Snow Flake算法
+    r.GET("/snowflake/:id", controller.SnowFlakeAction)
+
+    //自增方式
+    r.GET("/autoincrement", controller.AutoIncrementAction)
 
     // Listen and Server in 0.0.0.0:8182
     r.Run(":8182")

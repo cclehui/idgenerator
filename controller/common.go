@@ -12,7 +12,17 @@ import (
     //"fmt"
 )
 
-func IdWorkerAction(context *gin.Context ) {
+//使用自增方法
+func AutoIncrementAction(context *gin.Context) {
+
+    source :=  context.DefaultQuery("souce", "")
+
+    jsonApi.Success(context, gin.H{"souce": source})
+    
+}
+
+//使用snow flake 算法
+func SnowFlakeAction(context *gin.Context ) {
     workerSource := context.Params.ByName("id");
     workerid, err := strconv.Atoi(workerSource);
 
