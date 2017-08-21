@@ -15,10 +15,9 @@ import (
 //使用自增方法
 func AutoIncrementAction(context *gin.Context) {
 
-    source :=  context.DefaultQuery("souce", "")
+    source :=  context.DefaultQuery("source", "")
 
     jsonApi.Success(context, gin.H{"souce": source})
-    
 }
 
 //使用snow flake 算法
