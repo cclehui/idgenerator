@@ -17,7 +17,19 @@ func AutoIncrementAction(context *gin.Context) {
 
     source :=  context.DefaultQuery("source", "")
 
-    jsonApi.Success(context, gin.H{"souce": source})
+    if source == "" {
+        jsonApi.Fail(context, "参数错误", 200001)
+        return
+    }
+
+    nextId, err := model.GetIncrementIdWorker().NextId(source)
+    
+    if err != nil {
+        jsonApi.Fail(context, "获取id异常:" + err.Error(), 200002)
+        return
+    }
+
+    jsonApi.Success(context, gin.H{"souce": source, "id" : nextId})
 }
 
 //使用snow flake 算法
