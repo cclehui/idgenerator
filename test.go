@@ -21,15 +21,14 @@ import(
 
 func main() {
 
-    logger := logger.GetLogger();
-
     //初始化application
     application := model.GetApplication();
 
     //加载配置
     application.InitConfig("");
 
-    logger.Printf("application inited:%#v\n", application.ConfigData);
+    //异步写log
+    logger.AsyncInfo("application inited......");
 
     r := gin.Default()
 

@@ -48,7 +48,6 @@ func NewSnowFlakeIdWorker(workerid int64) (iw *SnowFlakeIdWorker, err error) {
 		return nil, errors.New("workerid 异常")
 	}
 
-    logger := logger.GetLogger();
     logger.Printf("NewSnowFlakeIdWorker, max worker ID:%#v, current:%#v\n", maxWorkerId, workerid);
 
 	iw = new(SnowFlakeIdWorker)
