@@ -102,7 +102,7 @@ func LoggerHanderFunc() gin.HandlerFunc {
             comment := context.Errors.ByType(gin.ErrorTypePrivate).String()
 
             //logData := fmt.Sprintf("%v |%s %3d %s| %13v | %15s |%s  %s %-7s %s\n%s",
-            logData := fmt.Sprintf("%s %3d %s| %13v | %15s |%s  %s %-7s %s\n%s",
+            logData := fmt.Sprintf("%s %3d %s| %13v | %15s |%s  %s %-7s %s %s",
                             //end.Format("2006/01/02 - 15:04:05"),
                             statusColor, statusCode, reset,
                             latency,
