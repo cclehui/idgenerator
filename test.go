@@ -30,7 +30,10 @@ func main() {
     //异步写log
     logger.AsyncInfo("application inited......");
 
-    r := gin.Default()
+    //r := gin.Default()
+    r := gin.New()
+    r.Use(logger.LoggerHanderFunc())
+    r.Use(gin.Recovery())
 
     r.GET("/ping", func(c *gin.Context) {
         c.JSON(200, gin.H{
