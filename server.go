@@ -3,7 +3,7 @@ package main
 //import  idGenerator "idGenerator/model"
 
 import(
-    //"fmt"
+    "fmt"
     //"time"
     //"os"
     //"idGenerator/model/config"
@@ -29,6 +29,10 @@ func main() {
 
     //异步写log
     logger.AsyncInfo("application inited......");
+
+    configLog := fmt.Sprintf("loaded config %#v", application.ConfigData)
+
+    logger.AsyncInfo(configLog);
 
     //r := gin.Default()
     r := gin.New()

@@ -2,7 +2,13 @@ addr="127.0.0.1:6389"
 
 #log_path: /Users/flike/src 
 #日志级别
-log_level="debug"
+logLevel="debug"
+
+#递增id的 bucket步长
+bucketStep=1000
+
+#db持久化是否使用事务
+useTransAction=true
 
 [mysql]
 host="127.0.0.1"
@@ -10,5 +16,5 @@ port=3306
 user="root"
 password="cclehui06156041"
 name="test"
-max_idle_conns=4
-max_open_conns=20
+maxIdleConns=4
+maxOpenConns=20

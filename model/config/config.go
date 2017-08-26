@@ -8,7 +8,9 @@ import (
 type Config struct {
     Addr string `toml: "addr"`
     LogPath string `toml: "log_path"`
-    LogLevel string `toml: "log_level"`
+    LogLevel string `toml: "logLevel"`
+    BucketStep int `toml: "bucketStep"`
+    UseTransAction bool `toml: "useTransAction"`
     Mysql Mysql `toml: "mysql"`
 }
 
@@ -18,8 +20,8 @@ type Mysql struct {
     Name string `toml: "name"`
     User string `toml: "user"`
     Password string `toml: "password"`
-    MaxIdleConns int `toml: "max_idle_conns"`
-    MaxOpenConns int `toml: "max_open_conns"`
+    MaxIdleConns int `toml: "maxIdleConns"`
+    MaxOpenConns int `toml: "maxOpenConns"`
 }
 
 func GetInstance(configFile string) Config {

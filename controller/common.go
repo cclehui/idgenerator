@@ -22,8 +22,14 @@ func AutoIncrementAction(context *gin.Context) {
         return
     }
 
-    nextId, err := model.GetIncrementIdWorker().NextId(source)
-    
+    if model.GetApplication().ConfigData.UseTransAction {
+        //使用事务
+        nextId, err := model.GetIncrementIdWorker().NextIdWithTx(source)
+
+    } else {
+        nextId, err := model.GetIncrementIdWorker().NextId(source)
+    }
+
     if err != nil {
         jsonApi.Fail(context, "获取id异常:" + err.Error(), 200002)
         return

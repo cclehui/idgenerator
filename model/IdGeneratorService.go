@@ -2,6 +2,8 @@ package model
 
 import (
     "database/sql"
+    "idGenerator/model/logger"
+    "strconv"
 )
 
 type IdGeneratorService struct {
@@ -68,6 +70,8 @@ func (serviceInstance *IdGeneratorService) updateSourceCurrentId(source string, 
     }
 
     oldId := serviceInstance.getIdBySource(source)
+
+    logger.AsyncInfo("source: " + source + " update current_id to "  + strconv.Itoa(currentId))
 
     if oldId > 0 { //更新数据
         stmt, err := serviceInstance.DB.Prepare("update " + serviceInstance.TableName +" set current_id = ? where worker_source = ?")
