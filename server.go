@@ -1,19 +1,39 @@
 package main
 
+//import  idGenerator "idGenerator/model"
+
 import(
-    "fmt"
+    //"fmt"
     //"time"
     //"os"
-    "strconv"
-    "idGenerator"
+    //"idGenerator/model/config"
+    //"idGenerator/model/persistent"
+    "idGenerator/model/logger"
     "github.com/gin-gonic/gin"
+    "idGenerator/model"
+    "idGenerator/controller"
 )
 
-var idWorkerMap = make(map[int]*idGenerator.IdWorker)
+
+//每个业务对应一个 key 全局唯一
+//var idWorkerMap = make(map[int]*idGenerator.IdWorker)
+//var idWorkerMap = cmap.New();
 
 func main() {
 
-    r := gin.Default()
+    //初始化application
+    application := model.GetApplication();
+
+    //加载配置
+    application.InitConfig("");
+
+    //异步写log
+    logger.AsyncInfo("application inited......");
+
+    //r := gin.Default()
+    r := gin.New()
+    r.Use(logger.LoggerHanderFunc())
+    r.Use(gin.Recovery())
 
     r.GET("/ping", func(c *gin.Context) {
         c.JSON(200, gin.H{
@@ -21,27 +41,14 @@ func main() {
         })
     })
 
-    // Get ID
-    r.GET("/worker/:id", func(c *gin.Context) {
-        id, _ := strconv.Atoi(c.Params.ByName("id"))
-        value, ok := idWorkerMap[id]
-        if ok {
-            nid, _ := value.NextId()
-            c.JSON(200, gin.H{"id": nid})
-        } else {
-            iw, err := idGenerator.NewIdWorker(int64(id))
-            if err == nil {
-                nid, _ := iw.NextId()
-                idWorkerMap[id] = iw
-                c.JSON(200, gin.H{"id": nid})
-            } else {
-                fmt.Println(err)
-            }
-        }
-    })
+    // Snow Flake算法
+    r.GET("/snowflake/:id", controller.SnowFlakeAction)
+
+    //自增方式
+    r.GET("/autoincrement", controller.AutoIncrementAction)
 
     // Listen and Server in 0.0.0.0:8182
-    //r.Run(":8182")
+    r.Run(":8182")
 
-    r.Run() // listen and serve on 0.0.0.0:8080
+    //r.Run() // listen and serve on 0.0.0.0:8080
 }
