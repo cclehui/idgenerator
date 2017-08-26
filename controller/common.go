@@ -22,12 +22,15 @@ func AutoIncrementAction(context *gin.Context) {
         return
     }
 
+    var nextId int
+    var err error
+
     if model.GetApplication().ConfigData.UseTransAction {
         //使用事务
-        nextId, err := model.GetIncrementIdWorker().NextIdWithTx(source)
+        nextId, err = model.GetIncrementIdWorker().NextIdWidthTx(source)
 
     } else {
-        nextId, err := model.GetIncrementIdWorker().NextId(source)
+        nextId, err = model.GetIncrementIdWorker().NextId(source)
     }
 
     if err != nil {

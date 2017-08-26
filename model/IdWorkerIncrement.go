@@ -64,7 +64,7 @@ func (worker *IncrementIdWorker) NextId(source string) (int, error){
 }
 
 //使用事务来持久化 
-func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error){
+func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error) {
     if source == "" {
         return 0, errors.New("来源错误")
     }
