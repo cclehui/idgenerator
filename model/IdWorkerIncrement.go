@@ -5,15 +5,20 @@ import (
     "errors"
 )
 
+const (
+    BUCKET_STEP = 10000 //每次从db中拿到的递增量
+)
+
 type IncrementIdWorker struct {
     WorkerMap cmap.ConcurrentMap
 }
 
 type singleStorage struct {
     CurrentId int
-    MaxId int
+    CurrentMaxId int
 }
 
+//获取自增的唯一id db没有事务保证
 func (worker *IncrementIdWorker) NextId(source string) (int, error){
     if source == "" {
         return 0, errors.New("来源错误")
@@ -22,6 +27,8 @@ func (worker *IncrementIdWorker) NextId(source string) (int, error){
     cachedStorage, hasOld := worker.WorkerMap.Get(source)
 
     var storage *singleStorage;
+
+    idGeneratorService := NewIdGeneratorService()
 
     if hasOld {
         tempStorage, typeOk := cachedStorage.(*singleStorage)
@@ -32,11 +39,26 @@ func (worker *IncrementIdWorker) NextId(source string) (int, error){
         storage = tempStorage
 
     } else {
-        storage = &singleStorage{0, 10000}
+        //从db中load 
+        currentId := idGeneratorService.getCurrentIdBySource(source)
+        currentMaxId := currentId + BUCKET_STEP
+
+        // 当前最大的id持久化到db中
+        idGeneratorService.updateSourceCurrentId(source, currentMaxId)
+
+        storage = &singleStorage{currentId, currentMaxId}
         worker.WorkerMap.Set(source, storage)
+
     }
 
     storage.CurrentId = storage.CurrentId + 1
+
+    if storage.CurrentId >= storage.CurrentMaxId {
+        storage.CurrentMaxId += BUCKET_STEP
+
+        // 当前最大的id增大 ， 并持久化到db中
+        idGeneratorService.updateSourceCurrentId(source, storage.CurrentMaxId)
+    }
 
     return storage.CurrentId, nil
 }

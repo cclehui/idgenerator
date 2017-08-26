@@ -11,3 +11,4 @@ user="root"
 password="cclehui06156041"
 name="test"
 max_idle_conns=4
+max_open_conns=20

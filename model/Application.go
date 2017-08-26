@@ -44,6 +44,8 @@ func (application *Application) GetMysqlDB() (db *sql.DB, err interface{}) {
                     application.ConfigData.Mysql.Host,
                     application.ConfigData.Mysql.Port,
                     application.ConfigData.Mysql.Name,
+                    application.ConfigData.Mysql.MaxIdleConns,
+                    application.ConfigData.Mysql.MaxOpenConns,
                 )
 
     return db, nil;

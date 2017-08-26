@@ -8,7 +8,7 @@ import (
 
 
 func GetMysqlDB(userName string, password string,
-             host string, port int, dbName string) *sql.DB {
+             host string, port int, dbName string, maxIdleCon int, maxOpenCon int) *sql.DB {
 
     var connectStr string;
 
@@ -22,7 +22,11 @@ func GetMysqlDB(userName string, password string,
         panic(err.Error())
     }
 
-    defer db.Close()
+    //sql 连接池功能
+    db.SetMaxIdleConns(maxIdleCon) //最大空闲连接数
+    db.SetMaxOpenConns(maxOpenCon) //最大能打开的连接数
+
+    //defer db.Close()
 
     err = db.Ping()
     if err != nil {
@@ -30,12 +34,5 @@ func GetMysqlDB(userName string, password string,
     }
 
     return db
-
 }
 
-
-func GetWokerCurrentId(workerId int) int {
-
-    return 1
-
-}

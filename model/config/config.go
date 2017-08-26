@@ -18,7 +18,8 @@ type Mysql struct {
     Name string `toml: "name"`
     User string `toml: "user"`
     Password string `toml: "password"`
-    MaxIdleConns string `toml: "max_idle_conns"`
+    MaxIdleConns int `toml: "max_idle_conns"`
+    MaxOpenConns int `toml: "max_open_conns"`
 }
 
 func GetInstance(configFile string) Config {
