@@ -43,6 +43,40 @@ func (serviceInstance *IdGeneratorService) getCurrentIdBySource(source string) i
 	}
 }
 
+//使用事务 从db中load当前的current_id ，并增大库中的id
+func (serviceInstance *IdGeneratorService) loadCurrentIdForSource(source string, bucket_step int) int {
+	if source == "" || bucket_step < 1 {
+		panic("业务参数错误，或者id递增步长错误")
+	}
+
+	oldItemId = serviceInstance.getItemInfoBySource(source)
+
+	dbTx, err := serviceInstance.DB.Begin()
+	checkErr(err)
+
+}
+
+func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) int {
+	if source == "" {
+		panic("source is empty")
+	}
+
+	var id int
+	err := serviceInstance.DB.QueryRow(
+		"select id from "+serviceInstance.TableName+" where worker_source = ? limit 1",
+		source).Scan(&id)
+
+	switch {
+	case err == sql.ErrNoRows:
+		return 0
+	case err != nildGenerator:
+		panic(err)
+	default:
+		return id
+	}
+}
+
+//获取记录的id
 func (serviceInstance *IdGeneratorService) getIdBySource(source string) int {
 	if source == "" {
 		panic("source is empty")
@@ -56,7 +90,7 @@ func (serviceInstance *IdGeneratorService) getIdBySource(source string) int {
 	switch {
 	case err == sql.ErrNoRows:
 		return 0
-	case err != nil:
+	case err != nildGenerator:
 		panic(err)
 	default:
 		return id

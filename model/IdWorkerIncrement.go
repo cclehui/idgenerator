@@ -75,7 +75,7 @@ func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error) {
 
 	idGeneratorService := NewIdGeneratorService()
 
-	if hasOld {
+	if hasOld {//内存中有
 		tempStorage, typeOk := cachedStorage.(*singleStorage)
 		if !typeOk {
 			return 0, errors.New("旧数据类型异常")
