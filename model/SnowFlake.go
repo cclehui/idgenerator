@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 	//"fmt"
-    "idGenerator/model/logger"
+	"idGenerator/model/logger"
 )
 
 const (
@@ -48,10 +48,10 @@ func NewSnowFlakeIdWorker(workerid int64) (iw *SnowFlakeIdWorker, err error) {
 		return nil, errors.New("workerid 异常")
 	}
 
-    logger.Printf("NewSnowFlakeIdWorker, max worker ID:%#v, current:%#v\n", maxWorkerId, workerid);
+	logger.Printf("NewSnowFlakeIdWorker, max worker ID:%#v, current:%#v\n", maxWorkerId, workerid)
 
 	iw = new(SnowFlakeIdWorker)
-    iw.maxWorkerId = maxWorkerId
+	iw.maxWorkerId = maxWorkerId
 	iw.workerId = workerid
 	iw.lastTimeStamp = -1
 	iw.sequence = 0

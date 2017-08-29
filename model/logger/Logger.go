@@ -1,69 +1,68 @@
 package logger
 
 import (
-    "log"
-    "os"
-    "time"
-    "fmt"
-    "github.com/gin-gonic/gin"
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"log"
+	"os"
+	"time"
 )
 
 type MyLogger struct {
-    Logger *log.Logger
-    ChannelInfo chan string
+	Logger      *log.Logger
+	ChannelInfo chan string
 }
 
-var loggerInstance *MyLogger = nil;
+var loggerInstance *MyLogger = nil
 
 //获取logger实例 单例模式
-func GetLogger() *MyLogger{
+func GetLogger() *MyLogger {
 
-    if (loggerInstance == nil) {
-        loggerInstance = new(MyLogger);
-        loggerInstance.Logger = log.New(os.Stdout, "[cclehui]\t", log.Ldate | log.Ltime)
-        loggerInstance.ChannelInfo = make(chan string, 1024)
+	if loggerInstance == nil {
+		loggerInstance = new(MyLogger)
+		loggerInstance.Logger = log.New(os.Stdout, "[cclehui]\t", log.Ldate|log.Ltime)
+		loggerInstance.ChannelInfo = make(chan string, 1024)
 
-        go func() {
-            for {
-                select {
-                    case logData := <-loggerInstance.ChannelInfo : //info log 的channel
-                        loggerInstance.Logger.Println(logData)
-                }
-            }
-        }()
-    }
+		go func() {
+			for {
+				select {
+				case logData := <-loggerInstance.ChannelInfo: //info log 的channel
+					loggerInstance.Logger.Println(logData)
+				}
+			}
+		}()
+	}
 
-    return loggerInstance;
+	return loggerInstance
 }
-
 
 //异步写Log
 func AsyncInfo(logStr string) {
-    myLogger := GetLogger()
+	myLogger := GetLogger()
 
-    timeOut := make(chan bool)
+	timeOut := make(chan bool)
 
-    go func() {
-        select {
-            case myLogger.ChannelInfo <- logStr:
-                return
-            case <-timeOut: //0.5s超时
-                fmt.Println("write log time out")
-                return
-        }
-    } ()
+	go func() {
+		select {
+		case myLogger.ChannelInfo <- logStr:
+			return
+		case <-timeOut: //0.5s超时
+			fmt.Println("write log time out")
+			return
+		}
+	}()
 
-    //超时机制
-    go func() {
-        time.Sleep(500 * time.Millisecond)
-        timeOut <- true
-    } ()
+	//超时机制
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		timeOut <- true
+	}()
 }
 
 //同步写Log
 func Printf(format string, v ...interface{}) {
-    myLogger := GetLogger();
-    myLogger.Logger.Printf(format, v);
+	myLogger := GetLogger()
+	myLogger.Logger.Printf(format, v)
 }
 
 //log 中间件
@@ -80,41 +79,41 @@ var (
 )
 
 //写Log的 middleware
-func LoggerHanderFunc() gin.HandlerFunc { 
-    return func(context *gin.Context) {
-            start := time.Now()
-            path := context.Request.URL.Path
+func LoggerHanderFunc() gin.HandlerFunc {
+	return func(context *gin.Context) {
+		start := time.Now()
+		path := context.Request.URL.Path
 
-            // Process request
-            context.Next()
+		// Process request
+		context.Next()
 
-            end := time.Now()
-            latency := end.Sub(start)
+		end := time.Now()
+		latency := end.Sub(start)
 
-            clientIP := context.ClientIP()
-            method := context.Request.Method
-            statusCode := context.Writer.Status()
-            var statusColor, methodColor string
+		clientIP := context.ClientIP()
+		method := context.Request.Method
+		statusCode := context.Writer.Status()
+		var statusColor, methodColor string
 
-            statusColor = colorForStatus(statusCode)
-            methodColor = colorForMethod(method)
+		statusColor = colorForStatus(statusCode)
+		methodColor = colorForMethod(method)
 
-            comment := context.Errors.ByType(gin.ErrorTypePrivate).String()
+		comment := context.Errors.ByType(gin.ErrorTypePrivate).String()
 
-            //logData := fmt.Sprintf("%v |%s %3d %s| %13v | %15s |%s  %s %-7s %s\n%s",
-            logData := fmt.Sprintf("%s %3d %s| %13v | %15s |%s  %s %-7s %s %s",
-                            //end.Format("2006/01/02 - 15:04:05"),
-                            statusColor, statusCode, reset,
-                            latency,
-                            clientIP,
-                            methodColor, method, reset,
-                            path,
-                            comment,
-                        )
+		//logData := fmt.Sprintf("%v |%s %3d %s| %13v | %15s |%s  %s %-7s %s\n%s",
+		logData := fmt.Sprintf("%s %3d %s| %13v | %15s |%s  %s %-7s %s %s",
+			//end.Format("2006/01/02 - 15:04:05"),
+			statusColor, statusCode, reset,
+			latency,
+			clientIP,
+			methodColor, method, reset,
+			path,
+			comment,
+		)
 
-            //异步写Log
-            AsyncInfo(logData)
-        }
+		//异步写Log
+		AsyncInfo(logData)
+	}
 }
 
 func colorForStatus(code int) string {
