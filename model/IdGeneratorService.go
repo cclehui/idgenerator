@@ -44,7 +44,7 @@ func (serviceInstance *IdGeneratorService) getCurrentIdBySource(source string) i
 }
 
 //获取一条记录的信息
-func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) int64, int64 {
+func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) (int64, int64) {
 	if source == "" {
 		panic("source is empty")
 	}
@@ -108,7 +108,7 @@ func (serviceInstance *IdGeneratorService) loadCurrentIdFromDbTx(source string, 
 		}
 
 		checkErr(err)
-	}
+	}()
 
 	//开启事务
 	dbTx, err = serviceInstance.DB.Begin()
@@ -170,7 +170,7 @@ func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int64, curre
 		}
 
 		checkErr(err)
-	}
+	}()
 
 	//开启事务
 	dbTx, err = serviceInstance.DB.Begin()
