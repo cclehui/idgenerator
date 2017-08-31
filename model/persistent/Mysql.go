@@ -6,8 +6,15 @@ import (
 	"strconv"
 )
 
+var db *sql.DB
+
 func GetMysqlDB(userName string, password string,
 	host string, port int, dbName string, maxIdleCon int, maxOpenCon int) *sql.DB {
+
+	//单例
+	if db != nil {
+		return db
+	}
 
 	var connectStr string
 
@@ -15,7 +22,9 @@ func GetMysqlDB(userName string, password string,
 		"@tcp(" + host + ":" + strconv.Itoa(port) +
 		")/" + dbName + "?charset=utf8"
 
-	db, err := sql.Open("mysql", connectStr)
+	var err error
+
+	db, err = sql.Open("mysql", connectStr)
 
 	if err != nil {
 		panic(err.Error())

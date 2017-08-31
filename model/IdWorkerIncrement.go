@@ -14,9 +14,9 @@ type IncrementIdWorker struct {
 }
 
 type singleStorage struct {
-	ItemId    int64
-	CurrentId    int64
-	CurrentMaxId int64
+	ItemId    int
+	CurrentId    int
+	CurrentMaxId int
 }
 
 //使用事务来持久化

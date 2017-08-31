@@ -13,12 +13,22 @@ type Application struct {
 var application Application;
 
 func main() {
-    fmt.Println("xxxxxxxx");
-    fmt.Println(application);
+    //fmt.Println("xxxxxxxx");
+    //fmt.Println(application);
 
-    data, err := test();
+	var err error
 
-    fmt.Printf("data:%#v, error: %#v\n", data, err)
+	if err := errors.New("aaaaaaaa"); err != nil {
+		err = err
+		fmt.Printf("1111\t%#v\n", err)
+	}
+
+	temp := recover()
+
+	fmt.Println(err)
+	fmt.Println(temp)
+    //data, err := test();
+    //fmt.Printf("data:%#v, error: %#v\n", data, err)
 }
 
 func test() (result int, err error) {

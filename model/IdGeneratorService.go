@@ -23,12 +23,12 @@ func NewIdGeneratorService() *IdGeneratorService {
 	return serviceInstance
 }
 
-func (serviceInstance *IdGeneratorService) getCurrentIdBySource(source string) int64 {
+func (serviceInstance *IdGeneratorService) getCurrentIdBySource(source string) int {
 	if source == "" {
 		panic("source is empty")
 	}
 
-	var currentId int64
+	var currentId int
 	err := serviceInstance.DB.QueryRow(
 		"select current_id from "+serviceInstance.TableName+" where worker_source = ? limit 1",
 		source).Scan(&currentId)
@@ -44,12 +44,12 @@ func (serviceInstance *IdGeneratorService) getCurrentIdBySource(source string) i
 }
 
 //获取一条记录的信息
-func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) (int64, int64) {
+func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) (int, int) {
 	if source == "" {
 		panic("source is empty")
 	}
 
-	var id, currentId int64
+	var id, currentId int
 	err := serviceInstance.DB.QueryRow(
 		"select id, current_id from "+serviceInstance.TableName+" where worker_source = ? limit 1",
 		source).Scan(&id, &currentId)
@@ -57,7 +57,7 @@ func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) (i
 	switch {
 	case err == sql.ErrNoRows:
 		return 0, 0
-	case err != nildGenerator:
+	case err != nil:
 		panic(err)
 	default:
 		return id, currentId
@@ -65,12 +65,12 @@ func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) (i
 }
 
 //获取记录的id
-func (serviceInstance *IdGeneratorService) getIdBySource(source string) int64 {
+func (serviceInstance *IdGeneratorService) getIdBySource(source string) int {
 	if source == "" {
 		panic("source is empty")
 	}
 
-	var id int64
+	var id int
 	err := serviceInstance.DB.QueryRow(
 		"select id from "+serviceInstance.TableName+" where worker_source = ? limit 1",
 		source).Scan(&id)
@@ -78,7 +78,7 @@ func (serviceInstance *IdGeneratorService) getIdBySource(source string) int64 {
 	switch {
 	case err == sql.ErrNoRows:
 		return 0
-	case err != nildGenerator:
+	case err != nil:
 		panic(err)
 	default:
 		return id
@@ -89,16 +89,20 @@ func (serviceInstance *IdGeneratorService) getIdBySource(source string) int64 {
 /*数据更新相关*/
 
 //使用事务 从db中load当前的current_id ，并增大库中的id
-func (serviceInstance *IdGeneratorService) loadCurrentIdFromDbTx(source string, bucket_step int) (int64, int64) {
+func (serviceInstance *IdGeneratorService) loadCurrentIdFromDbTx(source string, bucket_step int) (int, int) {
 	if source == "" || bucket_step < 1 {
 		panic("业务参数错误，或者id递增步长错误")
 	}
 
+	logger.AsyncInfo("load current id from db, source: " + source + " , bucket_step: " + strconv.Itoa(bucket_step))
+
 	var err error
 	var dbTx *sql.Tx
-	var itemId, currentId int64
+	var itemId, currentId int
 
 	defer func() {
+		err := recover()
+
 		if dbTx != nil {
 			if err != nil {
 				err = dbTx.Rollback() //回滚事务
@@ -119,48 +123,50 @@ func (serviceInstance *IdGeneratorService) loadCurrentIdFromDbTx(source string, 
 	if oldItemId < 1 {//还没有记录
 		currentId = 0
 
-		stmt, err := serviceInstance.DB.Prepare("INSERT " + serviceInstance.TableName + " SET worker_source=?, current_id=?")
-		checkErr(err)
+		stmt, err1 := serviceInstance.DB.Prepare("INSERT " + serviceInstance.TableName + " SET worker_source=?, current_id=?")
+		defer stmt.Close()
+		checkErr(err1)
 
-		_, err := stmt.Exec(source, bucket_step)
-		checkErr(err)
+		 res, err2 := stmt.Exec(source, bucket_step)
+		 checkErr(err2)
 
-		itemId, err := res.LastInsertId()
-		checkErr(err)
+		itemIdNew, err3 := res.LastInsertId()
+		checkErr(err3)
 
+		itemId = int(itemIdNew)
 
 	} else {//更新记录
 		currentId = oldCurrentId
 		itemId = oldItemId
 
 		//锁住一行
-		serviceInstance.DB.QueryRow(
-				"select id from " + serviceInstance.TableName + " where id = ?  from update limit 1",
-				oldItemId
-		)
+		serviceInstance.DB.QueryRow("select id from " + serviceInstance.TableName + " where id = ?  from update limit 1", oldItemId)
 
-		stmt, err := serviceInstance.DB.Prepare("update " + serviceInstance.TableName + " set current_id = ? where id = ?")
-		checkErr(err)
+		stmt, err4 := serviceInstance.DB.Prepare("update " + serviceInstance.TableName + " set current_id = ? where id = ?")
+		defer stmt.Close()
+		checkErr(err4)
 
-		_, err := stmt.Exec(oldCurrentId + bucket_step, oldItemId)
-		checkErr(err)
+		_, err5 := stmt.Exec(int(oldCurrentId + bucket_step), oldItemId)
+		checkErr(err5)
 	}
 
 	return itemId, currentId
 }
 
 //使用事务更新数据
-func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int64, currentId int64) int64 {
+func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int, currentId int) int {
 	if itemId < 1 || currentId < 1 {
 		panic("parameter error")
 	}
 
-	logger.AsyncInfo("itemId: " + itemId + " update current_id to " + strconv.Itoa(currentId))
+	logger.AsyncInfo("itemId: " + strconv.Itoa(itemId) + " update current_id to " + strconv.Itoa(currentId))
 
-	var err error
 	var dbTx *sql.Tx
+	var err error
 
 	defer func() {
+		err := recover()
+
 		if dbTx != nil {
 			if err != nil {
 				err = dbTx.Rollback() //回滚事务
@@ -177,16 +183,14 @@ func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int64, curre
 	checkErr(err)
 
 	//锁住一行
-	serviceInstance.DB.QueryRow(
-			"select id from " + serviceInstance.TableName + " where id = ?  from update limit 1",
-			itemId
-		)
+	serviceInstance.DB.QueryRow("select id from " + serviceInstance.TableName + " where id = ?  from update limit 1", itemId)
 
-	stmt, err := serviceInstance.DB.Prepare("update " + serviceInstance.TableName + " set current_id = ? where id = ?")
-	checkErr(err)
+	stmt, err2 := serviceInstance.DB.Prepare("update " + serviceInstance.TableName + " set current_id = ? where id = ?")
+	defer stmt.Close()
+	checkErr(err2)
 
-	_, err := stmt.Exec(currentId, itemId)
-	checkErr(err)
+	_, err3 := stmt.Exec(currentId, itemId)
+	checkErr(err3)
 
 	return itemId
 }
