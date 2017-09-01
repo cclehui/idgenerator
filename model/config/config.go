@@ -24,9 +24,9 @@ type Mysql struct {
 	MaxOpenConns int    `toml: "maxOpenConns"`
 }
 
-func GetInstance(configFile string) Config {
+func GetConfigFromFile(configFile string) Config {
 	if configFile == "" {
-		configFile = "./config/production.toml"
+		panic("配置文件不存在")
 	}
 
 	data, err := ioutil.ReadFile(configFile)
