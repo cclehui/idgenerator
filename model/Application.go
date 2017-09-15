@@ -75,16 +75,17 @@ func (application *Application) InitConfig(configFile string) {
 					if err != nil {
 						logger.AsyncInfo(fmt.Sprintf("配置文件热加载异常, %#v", err))
 					}
+
+					waitChan<-true
 				}()
 
 				application.ConfigData = config.GetConfigFromFile(configFile)
 
-				waitChan<-true
 			}()
 
 			<-waitChan
 
-			logger.AsyncInfo("配置文件热加载, success...")
+			logger.AsyncInfo("配置文件热加载, end...")
 		}
 
 	}()

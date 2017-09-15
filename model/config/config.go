@@ -9,6 +9,8 @@ type Config struct {
 	Addr           string `toml: "addr"`
 	LogPath        string `toml: "log_path"`
 	LogLevel       string `toml: "logLevel"`
+	PersistType    int    `toml: "persistType"`
+	DataDir        string    `toml: "dataDir"`
 	BucketStep     int    `toml: "bucketStep"`
 	UseTransAction bool   `toml: "useTransAction"`
 	Mysql          Mysql  `toml: "mysql"`
