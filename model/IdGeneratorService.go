@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"idGenerator/model/logger"
 	"strconv"
+	//"fmt"
 )
 
 type IdGeneratorService struct {
@@ -154,15 +155,16 @@ func (serviceInstance *IdGeneratorService) loadCurrentIdFromDbTx(source string, 
 }
 
 //使用事务更新数据
-func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int, currentId int) int {
+func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int, currentId int, bucketStep int) (resultCurrentId int, newDbCurrentId int){
 	if itemId < 1 || currentId < 1 {
 		panic("parameter error")
 	}
 
-	logger.AsyncInfo("itemId: " + strconv.Itoa(itemId) + " update current_id to " + strconv.Itoa(currentId))
+	logger.AsyncInfo("itemId: " + strconv.Itoa(itemId) + " update current_id to " + strconv.Itoa(currentId + bucketStep))
 
 	var dbTx *sql.Tx
 	var err error
+
 
 	defer func() {
 		err := recover()
@@ -175,6 +177,7 @@ func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int, current
 			}
 		}
 
+		//异常没抛出来 cclehui_todo
 		checkErr(err)
 	}()
 
@@ -183,16 +186,30 @@ func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int, current
 	checkErr(err)
 
 	//锁住一行
-	serviceInstance.DB.QueryRow("select id from " + serviceInstance.TableName + " where id = ?  from update limit 1", itemId)
+	var dbCurrentId int
+
+	err1 := serviceInstance.DB.QueryRow(
+			"select current_id from " + serviceInstance.TableName + " where id = ? limit 1 for update ", 
+			itemId).Scan(&dbCurrentId)
+
+	checkErr(err1)
+
+	newDbCurrentId = currentId + bucketStep
+	resultCurrentId = currentId
+
+	if dbCurrentId > currentId {
+		resultCurrentId = dbCurrentId + 1
+		newDbCurrentId = dbCurrentId + bucketStep;
+	}
 
 	stmt, err2 := serviceInstance.DB.Prepare("update " + serviceInstance.TableName + " set current_id = ? where id = ?")
 	defer stmt.Close()
 	checkErr(err2)
 
-	_, err3 := stmt.Exec(currentId, itemId)
+	_, err3 := stmt.Exec(newDbCurrentId, itemId)
 	checkErr(err3)
 
-	return itemId
+	return resultCurrentId, newDbCurrentId
 }
 
 func checkErr(err interface{}) {

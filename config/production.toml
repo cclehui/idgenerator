@@ -5,7 +5,7 @@ addr="127.0.0.1:6389"
 logLevel="debug"
 
 #递增id的 bucket步长
-bucketStep=1000
+bucketStep=10
 
 #持久化方式 1:mysql , 2:文件持久化
 persistType=2

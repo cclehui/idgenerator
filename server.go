@@ -29,7 +29,7 @@ func main() {
 	//异步写log
 	logger.AsyncInfo("application inited......")
 
-	configLog := fmt.Sprintf("loaded config %#v", application.ConfigData)
+	configLog := fmt.Sprintf("loaded config %#v\n application base_path:%s", application.ConfigData, application.BasePath)
 
 	logger.AsyncInfo(configLog)
 

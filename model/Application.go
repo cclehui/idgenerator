@@ -15,6 +15,7 @@ type Application struct {
 	IdWorkerMap cmap.ConcurrentMap // 应用的处理worker
 	ConfigData  config.Config      //配置信息
 	ConfigFileInfo os.FileInfo     //配置文件的文件信息
+	BasePath string //应用根目录
 }
 
 var application *Application
@@ -37,6 +38,15 @@ func (application *Application) InitConfig(configFile string) {
 		configFile = "./config/production.toml"
 	}
 
+	//应用根目录
+	if pwd, err := os.Getwd(); err != nil {
+		panic(err)
+
+	} else {
+		application.BasePath = pwd
+	}
+
+	//配置文件信息
 	fileInfo, err := os.Stat(configFile)
 	if err != nil {
 		panic(err)
