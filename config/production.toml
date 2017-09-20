@@ -16,6 +16,10 @@ dataDir="."
 #db持久化是否使用事务
 useTransAction=true
 
+[bolt]
+filePath="./data/bolt_kv.db"
+bucketName="idGenerator"
+
 [mysql]
 host="127.0.0.1"
 port=3306

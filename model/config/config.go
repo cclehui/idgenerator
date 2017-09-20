@@ -13,7 +13,13 @@ type Config struct {
 	DataDir        string    `toml: "dataDir"`
 	BucketStep     int    `toml: "bucketStep"`
 	UseTransAction bool   `toml: "useTransAction"`
+	Bolt           Bolt  `toml: "bolt"`
 	Mysql          Mysql  `toml: "mysql"`
+}
+
+type Bolt struct {
+	FilePath         string `toml: "filePath"`
+	BucketName       string `toml: "bucketName"`
 }
 
 type Mysql struct {

@@ -9,6 +9,7 @@ import (
 	"idGenerator/model/config"
 	"idGenerator/model/persistent"
 	"idGenerator/model/logger"
+	"github.com/boltdb/bolt"
 )
 
 type Application struct {
@@ -116,6 +117,22 @@ func (application *Application) GetMysqlDB() (db *sql.DB, err interface{}) {
 		application.ConfigData.Mysql.Name,
 		application.ConfigData.Mysql.MaxIdleConns,
 		application.ConfigData.Mysql.MaxOpenConns,
+	)
+
+	return db, nil
+}
+
+//获取BoltDB
+func (application *Application) GetBoltDB() (db *bolt.DB, err interface{}) {
+	defer func() {
+		err = recover()
+		return
+	}()
+
+	db = persistent.GetBlotDB(
+		application.ConfigData.Bolt.FilePath,
+		0777,
+		&bolt.Options{Timeout: 30 * time.Second}
 	)
 
 	return db, nil
