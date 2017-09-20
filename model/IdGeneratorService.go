@@ -171,13 +171,13 @@ func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int, current
 
 		if dbTx != nil {
 			if err != nil {
-				err = dbTx.Rollback() //回滚事务
+				//err = dbTx.Rollback() //回滚事务
+				dbTx.Rollback() //回滚事务
 			} else {
-				err = dbTx.Commit() //提交事务
+				dbTx.Commit() //提交事务
 			}
 		}
 
-		//异常没抛出来 cclehui_todo
 		checkErr(err)
 	}()
 

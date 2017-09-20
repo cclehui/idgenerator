@@ -2,9 +2,9 @@ package model
 
 import (
 	"errors"
-	"strconv"
+	//"strconv"
 	"idGenerator/model/cmap"
-	//"idGenerator/model/logger"
+	"idGenerator/model/logger"
 )
 
 //const (
@@ -99,6 +99,8 @@ func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error) {
 	if storage.CurrentId >= storage.CurrentMaxId {
 
 		newCurrentId, newMaxId := idGeneratorService.updateCurrentIdTx(storage.ItemId, storage.CurrentId, GetApplication().ConfigData.BucketStep)
+		logger.AsyncInfo(newCurrentId)
+		logger.AsyncInfo(newMaxId)
 
 		storage.CurrentId = newCurrentId
 		storage.CurrentMaxId = newMaxId

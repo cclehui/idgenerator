@@ -7,7 +7,7 @@ logLevel="debug"
 #递增id的 bucket步长
 bucketStep=10
 
-#持久化方式 1:mysql , 2:文件持久化
+#持久化方式 1:mysql , 2:文件持久化(boltdb)
 persistType=2
 
 #文件持久化存储路径 , 默认当前data目录下

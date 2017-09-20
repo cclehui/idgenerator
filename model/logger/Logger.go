@@ -37,10 +37,19 @@ func GetLogger() *MyLogger {
 }
 
 //异步写Log
-func AsyncInfo(logStr string) {
+func AsyncInfo(logData interface{}) {
 	myLogger := GetLogger()
 
 	timeOut := make(chan bool)
+
+	var logStr string
+
+	switch value := logData.(type) {
+		case string:
+			logStr = value
+		default:
+			logStr = fmt.Sprintf("%#v", logData)
+	}
 
 	go func() {
 		select {
