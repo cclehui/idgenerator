@@ -26,10 +26,10 @@ func (worker *IncrementIdWorker) NextIdByBoltDb(source string) (int, error) {
 		return 0, errors.New("来源错误")
 	}
 
-	cachedStorage, hasOld := worker.WorkerMap.Get(source)
+	//cachedStorage, hasOld := worker.WorkerMap.Get(source)
 
 
-	return storage.CurrentId, nil
+	return 110, nil
 }
 
 //使用事务来持久化
