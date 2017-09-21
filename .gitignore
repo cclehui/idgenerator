@@ -4,3 +4,4 @@
 *.swo
 *.swl
 tags
+data/*

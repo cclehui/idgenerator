@@ -1,27 +1,27 @@
 package persistent
 
 import (
-	"strconv"
+	//"strconv"
 	"os"
 	"github.com/boltdb/bolt"
 )
 
-var db *bolt.DB
+var boltDb *bolt.DB
 
 func GetBoltDB(dbFile string, mode os.FileMode, options *bolt.Options) *bolt.DB {
 
 	//单例
-	if db != nil {
-		return db
+	if boltDb != nil {
+		return boltDb
 	}
 
 	var err error
 
-	db, err = bolt.Open(dbFile, mode, options)
+	boltDb, err = bolt.Open(dbFile, mode, options)
 
 	if err != nil {
 		panic(err.Error())
 	}
 
-	return db
+	return boltDb
 }

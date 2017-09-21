@@ -7,12 +7,15 @@ import (
 	"idGenerator/model/logger"
 )
 
-//const (
-//BUCKET_STEP = 10000 //每次从db中拿到的递增量
-//)
+const (
+	//BUCKET_STEP = 10000 //每次从db中拿到的递增量
+	PERSIST_TYPE_MYSQL = 1 //mysql持久化
+	PERSIST_TYPE_BOLTDB = 2 //boltdb持久化
+)
 
 type IncrementIdWorker struct {
 	WorkerMap cmap.ConcurrentMap
+	PersistType int
 }
 
 type singleStorage struct {
@@ -21,6 +24,21 @@ type singleStorage struct {
 	CurrentMaxId int
 }
 
+//获取递增id
+func (worker *IncrementIdWorker) NextId(source string) (result int, err error) {
+	if worker.PersistType == PERSIST_TYPE_BOLTDB {
+		//Boltdb 持久化
+		result, err = worker.NextIdByBoltDb(source)
+
+	} else {
+
+		//mysql 持久化
+		result, err = worker.NextIdWidthTx(source)
+	}
+	return
+}
+
+//使用boltdb持久化
 func (worker *IncrementIdWorker) NextIdByBoltDb(source string) (int, error) {
 	if source == "" {
 		return 0, errors.New("来源错误")
@@ -28,11 +46,13 @@ func (worker *IncrementIdWorker) NextIdByBoltDb(source string) (int, error) {
 
 	//cachedStorage, hasOld := worker.WorkerMap.Get(source)
 
+	result := NewBoltDbIdGenerator().NextId(source)
 
-	return 110, nil
+
+	return result, nil
 }
 
-//使用事务来持久化
+//使用mysql事务来持久化
 func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error) {
 	if source == "" {
 		return 0, errors.New("来源错误")

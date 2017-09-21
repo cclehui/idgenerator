@@ -11,6 +11,7 @@ func GetIncrementIdWorker() *IncrementIdWorker {
 	if incrementIdWorkerInstance == nil {
 		incrementIdWorkerInstance = new(IncrementIdWorker)
 		incrementIdWorkerInstance.WorkerMap = cmap.New()
+		incrementIdWorkerInstance.PersistType = GetApplication().ConfigData.PersistType
 	}
 
 	return incrementIdWorkerInstance

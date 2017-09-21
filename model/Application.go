@@ -129,11 +129,7 @@ func (application *Application) GetBoltDB() (db *bolt.DB, err interface{}) {
 		return
 	}()
 
-	db = persistent.GetBlotDB(
-		application.ConfigData.Bolt.FilePath,
-		0777,
-		&bolt.Options{Timeout: 30 * time.Second}
-	)
+	db = persistent.GetBoltDB(application.ConfigData.Bolt.FilePath, 0777, &bolt.Options{Timeout: 30 * time.Second})
 
 	return db, nil
 }
