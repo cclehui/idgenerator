@@ -95,7 +95,7 @@ func (serviceInstance *MysqlService) loadCurrentIdFromDbTx(source string, bucket
 		panic("业务参数错误，或者id递增步长错误")
 	}
 
-	logger.AsyncInfo("load current id from db, source: " + source + " , bucket_step: " + strconv.Itoa(bucket_step))
+	logger.AsyncInfo("load current id from mysql, source: " + source + " , bucket_step: " + strconv.Itoa(bucket_step))
 
 	var err error
 	var dbTx *sql.Tx
@@ -106,9 +106,9 @@ func (serviceInstance *MysqlService) loadCurrentIdFromDbTx(source string, bucket
 
 		if dbTx != nil {
 			if err != nil {
-				err = dbTx.Rollback() //回滚事务
+				dbTx.Rollback() //回滚事务
 			} else {
-				err = dbTx.Commit() //提交事务
+				dbTx.Commit() //提交事务
 			}
 		}
 
@@ -160,11 +160,8 @@ func (serviceInstance *MysqlService) updateCurrentIdTx(itemId int, currentId int
 		panic("parameter error")
 	}
 
-	logger.AsyncInfo("itemId: " + strconv.Itoa(itemId) + " update current_id to " + strconv.Itoa(currentId + bucketStep))
-
 	var dbTx *sql.Tx
 	var err error
-
 
 	defer func() {
 		err := recover()
@@ -194,8 +191,8 @@ func (serviceInstance *MysqlService) updateCurrentIdTx(itemId int, currentId int
 
 	checkErr(err1)
 
-	newDbCurrentId = currentId + bucketStep
 	resultCurrentId = currentId
+	newDbCurrentId = currentId + bucketStep
 
 	if dbCurrentId > currentId {
 		resultCurrentId = dbCurrentId + 1
@@ -208,6 +205,8 @@ func (serviceInstance *MysqlService) updateCurrentIdTx(itemId int, currentId int
 
 	_, err3 := stmt.Exec(newDbCurrentId, itemId)
 	checkErr(err3)
+
+	logger.AsyncInfo("itemId: " + strconv.Itoa(itemId) + " update current_id to " + strconv.Itoa(newDbCurrentId))
 
 	return resultCurrentId, newDbCurrentId
 }
