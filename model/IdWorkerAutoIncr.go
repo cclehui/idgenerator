@@ -13,7 +13,8 @@ const (
 	PERSIST_TYPE_BOLTDB = 2 //boltdb持久化
 )
 
-type IncrementIdWorker struct {
+//自增长的 id worker
+type AutoIncrIdWorker struct {
 	WorkerMap cmap.ConcurrentMap
 	PersistType int
 }
@@ -25,7 +26,7 @@ type singleStorage struct {
 }
 
 //获取递增id
-func (worker *IncrementIdWorker) NextId(source string) (result int, err error) {
+func (worker *AutoIncrIdWorker) NextId(source string) (result int, err error) {
 	if worker.PersistType == PERSIST_TYPE_BOLTDB {
 		//Boltdb 持久化
 		result, err = worker.NextIdByBoltDb(source)
@@ -39,7 +40,7 @@ func (worker *IncrementIdWorker) NextId(source string) (result int, err error) {
 }
 
 //使用boltdb持久化
-func (worker *IncrementIdWorker) NextIdByBoltDb(source string) (int, error) {
+func (worker *AutoIncrIdWorker) NextIdByBoltDb(source string) (int, error) {
 	if source == "" {
 		return 0, errors.New("来源错误")
 	}
@@ -53,7 +54,7 @@ func (worker *IncrementIdWorker) NextIdByBoltDb(source string) (int, error) {
 }
 
 //使用mysql事务来持久化
-func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error) {
+func (worker *AutoIncrIdWorker) NextIdWidthTx(source string) (int, error) {
 	if source == "" {
 		return 0, errors.New("来源错误")
 	}
@@ -62,7 +63,7 @@ func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error) {
 
 	var storage *singleStorage
 
-	idGeneratorService := NewIdGeneratorService()
+	mysqlService := NewMysqlService()
 
 	if hasOld {//内存中有
 		tempStorage, typeOk := cachedStorage.(*singleStorage)
@@ -74,7 +75,7 @@ func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error) {
 
 	} else {
 		//从db中load
-		itemId, currentId := idGeneratorService.loadCurrentIdFromDbTx(source, GetApplication().ConfigData.BucketStep)
+		itemId, currentId := mysqlService.loadCurrentIdFromDbTx(source, GetApplication().ConfigData.BucketStep)
 		currentMaxId := currentId + GetApplication().ConfigData.BucketStep
 
 
@@ -88,7 +89,7 @@ func (worker *IncrementIdWorker) NextIdWidthTx(source string) (int, error) {
 	//当前id超过内存中允许的最大值了 需要增大最大值， 并持久化到db中
 	if storage.CurrentId >= storage.CurrentMaxId {
 
-		newCurrentId, newMaxId := idGeneratorService.updateCurrentIdTx(storage.ItemId, storage.CurrentId, GetApplication().ConfigData.BucketStep)
+		newCurrentId, newMaxId := mysqlService.updateCurrentIdTx(storage.ItemId, storage.CurrentId, GetApplication().ConfigData.BucketStep)
 		logger.AsyncInfo(newCurrentId)
 		logger.AsyncInfo(newMaxId)
 

@@ -25,7 +25,7 @@ func AutoIncrementAction(context *gin.Context) {
 	var nextId int
 	var err error
 
-	nextId, err = model.GetIncrementIdWorker().NextId(source)
+	nextId, err = model.GetAutoIncrIdWorker().NextId(source)
 
 	if err != nil {
 		jsonApi.Fail(context, "获取id异常:"+err.Error(), 200002)

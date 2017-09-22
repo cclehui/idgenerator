@@ -7,13 +7,13 @@ import (
 	//"fmt"
 )
 
-type IdGeneratorService struct {
+type MysqlService struct {
 	DB        *sql.DB
 	TableName string
 }
 
-func NewIdGeneratorService() *IdGeneratorService {
-	var serviceInstance = new(IdGeneratorService)
+func NewMysqlService() *MysqlService {
+	var serviceInstance = new(MysqlService)
 
 	db, err := GetApplication().GetMysqlDB()
 	checkErr(err)
@@ -24,7 +24,7 @@ func NewIdGeneratorService() *IdGeneratorService {
 	return serviceInstance
 }
 
-func (serviceInstance *IdGeneratorService) getCurrentIdBySource(source string) int {
+func (serviceInstance *MysqlService) getCurrentIdBySource(source string) int {
 	if source == "" {
 		panic("source is empty")
 	}
@@ -45,7 +45,7 @@ func (serviceInstance *IdGeneratorService) getCurrentIdBySource(source string) i
 }
 
 //获取一条记录的信息
-func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) (int, int) {
+func (serviceInstance *MysqlService) getItemInfoBySource(source string) (int, int) {
 	if source == "" {
 		panic("source is empty")
 	}
@@ -66,7 +66,7 @@ func (serviceInstance *IdGeneratorService) getItemInfoBySource(source string) (i
 }
 
 //获取记录的id
-func (serviceInstance *IdGeneratorService) getIdBySource(source string) int {
+func (serviceInstance *MysqlService) getIdBySource(source string) int {
 	if source == "" {
 		panic("source is empty")
 	}
@@ -90,7 +90,7 @@ func (serviceInstance *IdGeneratorService) getIdBySource(source string) int {
 /*数据更新相关*/
 
 //使用事务 从db中load当前的current_id ，并增大库中的id
-func (serviceInstance *IdGeneratorService) loadCurrentIdFromDbTx(source string, bucket_step int) (int, int) {
+func (serviceInstance *MysqlService) loadCurrentIdFromDbTx(source string, bucket_step int) (int, int) {
 	if source == "" || bucket_step < 1 {
 		panic("业务参数错误，或者id递增步长错误")
 	}
@@ -155,7 +155,7 @@ func (serviceInstance *IdGeneratorService) loadCurrentIdFromDbTx(source string, 
 }
 
 //使用事务更新数据
-func (serviceInstance *IdGeneratorService) updateCurrentIdTx(itemId int, currentId int, bucketStep int) (resultCurrentId int, newDbCurrentId int){
+func (serviceInstance *MysqlService) updateCurrentIdTx(itemId int, currentId int, bucketStep int) (resultCurrentId int, newDbCurrentId int){
 	if itemId < 1 || currentId < 1 {
 		panic("parameter error")
 	}
