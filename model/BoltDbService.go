@@ -56,8 +56,6 @@ func (this *BoltDbService) loadCurrentIdFromDb(source string, bucket_step int) i
 		panic("业务参数错误，或者id递增步长错误")
 	}
 
-	logger.AsyncInfo("load current id from boltdb, source: " + source + " , bucket_step: " + strconv.Itoa(bucket_step))
-
 	var currentId int
 
 	boltDb, errGetBolt := GetApplication().GetBoltDB()
@@ -89,16 +87,18 @@ func (this *BoltDbService) loadCurrentIdFromDb(source string, bucket_step int) i
 
 		currentId = 0
 
-		errInsert := bucket.Put([]byte(this.BucketName), intToBytes(bucket_step))
+		errInsert := bucket.Put([]byte(source), intToBytes(currentId + bucket_step))
 		checkErr(errInsert)
 
 	} else {//更新记录
 
 		currentId = bytesToInt(oldCurrentId)
 
-		errUpdate := bucket.Put([]byte(this.BucketName), intToBytes(currentId + bucket_step))
+		errUpdate := bucket.Put([]byte(source), intToBytes(currentId + bucket_step))
 		checkErr(errUpdate)
 	}
+
+	logger.AsyncInfo("load current id from boltdb, source: " + source + " , currentId: " + strconv.Itoa(currentId))
 
 	return currentId
 }
@@ -147,7 +147,7 @@ func (this *BoltDbService) IncrSourceCurrentId(source string, currentId int, buc
 		newDbCurrentId = oldCurrentId + bucketStep;
 	}
 
-	errUpdate := bucket.Put([]byte(this.BucketName), intToBytes(newDbCurrentId))
+	errUpdate := bucket.Put([]byte(source), intToBytes(newDbCurrentId))
 	checkErr(errUpdate)
 
 	logger.AsyncInfo("source: " + source + " update bolt current_id to " + strconv.Itoa(newDbCurrentId))
@@ -158,14 +158,15 @@ func (this *BoltDbService) IncrSourceCurrentId(source string, currentId int, buc
 //整形转换成字节  
 func intToBytes(n int) []byte {
     bytesBuffer := bytes.NewBuffer([]byte{})
-    binary.Write(bytesBuffer, binary.BigEndian, n)
+	tmp := int64(n)
+    binary.Write(bytesBuffer, binary.BigEndian, tmp)
     return bytesBuffer.Bytes()
 }
 
 //字节转换成整形  
 func bytesToInt(b []byte) int {
     bytesBuffer := bytes.NewBuffer(b)
-    var tmp int
+    var tmp int64
     binary.Read(bytesBuffer, binary.BigEndian, &tmp)
-    return tmp
+    return int(tmp)
 }

@@ -3,6 +3,8 @@ package main
 import (
     "fmt"
     "errors"
+    "bytes"
+    "encoding/binary"
     "idGenerator/model/cmap"
 );
 
@@ -16,19 +18,28 @@ func main() {
     //fmt.Println("xxxxxxxx");
     //fmt.Println(application);
 
-	var err error
+	var data = 100
+	var bytesData = intToBytes(data)
 
-	if err := errors.New("aaaaaaaa"); err != nil {
-		err = err
-		fmt.Printf("1111\t%#v\n", err)
-	}
+	fmt.Println(bytesData)
+	fmt.Println(bytesToInt(bytesData))
 
-	temp := recover()
+}
 
-	fmt.Println(err)
-	fmt.Println(temp)
-    //data, err := test();
-    //fmt.Printf("data:%#v, error: %#v\n", data, err)
+//整形转换成字节  
+func intToBytes(n int) []byte {
+    bytesBuffer := bytes.NewBuffer([]byte{})
+	temp := int64(n)
+    binary.Write(bytesBuffer, binary.BigEndian, temp)
+    return bytesBuffer.Bytes()
+}
+
+//字节转换成整形  
+func bytesToInt(b []byte) int {
+    bytesBuffer := bytes.NewBuffer(b)
+    var tmp int64
+    binary.Read(bytesBuffer, binary.BigEndian, &tmp)
+    return int(tmp)
 }
 
 func test() (result int, err error) {
