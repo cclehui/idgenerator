@@ -102,6 +102,18 @@ func (application *Application) InitConfig(configFile string) {
 	}()
 }
 
+//启动数据备份服务
+func (application *Application) StartDataBackUpServer() {
+
+	go func() {
+		serverAddress := application.ConfigData.masterAddress
+		listener, err := net.Listen("tcp", s.address)
+		CheckErr(err)
+
+	}()
+
+}
+
 //获取Mysql连接
 func (application *Application) GetMysqlDB() (db *sql.DB, err interface{}) {
 	defer func() {

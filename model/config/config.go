@@ -12,6 +12,8 @@ type Config struct {
 	PersistType    int    `toml: "persistType"`
 	DataDir        string    `toml: "dataDir"`
 	BucketStep     int    `toml: "bucketStep"`
+	ServerType     int    `toml: "serverType"`
+	MasterAddress  string      `toml: "masterAddress"`
 	UseTransAction bool   `toml: "useTransAction"`
 	Bolt           Bolt  `toml: "bolt"`
 	Mysql          Mysql  `toml: "mysql"`

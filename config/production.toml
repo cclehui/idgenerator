@@ -4,8 +4,14 @@ addr="127.0.0.1:6389"
 #日志级别
 logLevel="debug"
 
-#递增id的 bucket步长
+#递增id的 bucket步长 增大步长可以有效减少持久化机会提高性能
 bucketStep=10
+
+#server_type  master 还是 slave
+serverType=master
+
+# master 数据同步的 ip和端口
+masterAddress="localhost:9000"
 
 #持久化方式 1:mysql , 2:文件持久化(boltdb)
 persistType=2

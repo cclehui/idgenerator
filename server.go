@@ -25,13 +25,13 @@ func main() {
 
 	//加载配置
 	application.InitConfig("")
+	configLog := fmt.Sprintf("loaded config %#v\napplication base_path:%s", application.ConfigData, application.BasePath)
+	logger.AsyncInfo(configLog)
+
+	//启动数据备份server
 
 	//异步写log
 	logger.AsyncInfo("application inited......")
-
-	configLog := fmt.Sprintf("loaded config %#v\napplication base_path:%s", application.ConfigData, application.BasePath)
-
-	logger.AsyncInfo(configLog)
 
 	//r := gin.Default()
 	r := gin.New()
