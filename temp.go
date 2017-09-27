@@ -29,7 +29,7 @@ func main() {
 //整形转换成字节  
 func intToBytes(n int) []byte {
     bytesBuffer := bytes.NewBuffer([]byte{})
-	temp := int64(n)
+	temp := int32(n)
     binary.Write(bytesBuffer, binary.BigEndian, temp)
     return bytesBuffer.Bytes()
 }
@@ -37,7 +37,7 @@ func intToBytes(n int) []byte {
 //字节转换成整形  
 func bytesToInt(b []byte) int {
     bytesBuffer := bytes.NewBuffer(b)
-    var tmp int64
+    var tmp int32
     binary.Read(bytesBuffer, binary.BigEndian, &tmp)
     return int(tmp)
 }
