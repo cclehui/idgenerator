@@ -29,6 +29,7 @@ func main() {
 	logger.AsyncInfo(configLog)
 
 	//启动数据备份server
+	application.StartDataBackUpServer()
 
 	//异步写log
 	logger.AsyncInfo("application inited......")

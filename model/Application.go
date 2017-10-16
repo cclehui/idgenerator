@@ -106,10 +106,7 @@ func (application *Application) InitConfig(configFile string) {
 func (application *Application) StartDataBackUpServer() {
 
 	go func() {
-		serverAddress := application.ConfigData.masterAddress
-		listener, err := net.Listen("tcp", s.address)
-		CheckErr(err)
-
+		StartMasterServer(application.ConfigData.MasterAddress)
 	}()
 
 }

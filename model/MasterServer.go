@@ -1,8 +1,14 @@
-package persistent
+package model
 
 import (
 	"net"
 	"time"
+	"io"
+	"fmt"
+	"errors"
+	"bytes"
+	"encoding/binary"
+	"bufio"
 	"container/list"
 	"idGenerator/model/logger"
 )
@@ -15,14 +21,18 @@ type Context struct {
 }
 
 func StartMasterServer(serverAddress string) {
-	tcpAddress, err := net.ResolveTCPAddr("tcp", serverAddress)
+	_, err := net.ResolveTCPAddr("tcp", serverAddress)
 	CheckErr(err)
 
-	listener, err := net.Listen("tcp", tcpAddress)
+	listener, err := net.Listen("tcp", serverAddress)
 	CheckErr(err)
 
 	defer func() {
 		listener.Close()
+	}()
+
+	if contextList == nil {
+		contextList = list.New()
 	}
 
 	// 开启一个子 grountine 来遍历 contextList cclehui_todo
@@ -36,6 +46,8 @@ func StartMasterServer(serverAddress string) {
 
 		now := time.Now().Unix()
 		var context = &Context{connection, now}
+
+		logger.AsyncInfo("new connection:" + fmt.Sprintf("%#v", connection))
 
 		contextList.PushBack(context) //放入全局context list中
 
@@ -64,14 +76,16 @@ func handleConnection(context *Context) {
 		if err != nil {
 			logger.AsyncInfo(err)
 		}
-	}
+	}()
 
-	var status = STATUS_NEW //状态机
+	var status = STATUS_NULL //状态机
 	var dataLength int = 0
 	var err error
 	var curAction byte
 
-	socketio := buffio.NewReadWriter(context.Connection, context.Connection);
+	ioReader := bufio.NewReader(context.Connection)
+	ioWriter := bufio.NewWriter(context.Connection)
+	socketio := bufio.NewReadWriter(ioReader, ioWriter);
 
 	FORLABEL:
 	for {
@@ -89,6 +103,8 @@ func handleConnection(context *Context) {
 					}
 				}
 
+				logger.AsyncInfo("new action byte:" + fmt.Sprintf("%#v", curAction))
+
 				if isNewAction(curAction) {
 					dataLength, err = getDataLength(socketio)
 					status = STATUS_NEW
@@ -100,38 +116,54 @@ func handleConnection(context *Context) {
 
 			case STATUS_NEW:
 				err = handleAction(context, curAction, socketio, dataLength)
+
+				dataLength = 0
+				status = STATUS_NULL
+
 				if err != nil {
 					logger.AsyncInfo("MasterServer, handleAction" + fmt.Sprintf("%#v", err))
 				}
-				dataLength = 0
-				status = STATUS_NULL
 		}
 	}
 }
 
 //处理请求
-func handleAction(context *Context, action byte, socketio buffio.ReadWriter, dataLength int) error {
-	if length < 0 {
+func handleAction(context *Context, action byte, socketio *bufio.ReadWriter, dataLength int) error {
+	if dataLength < 0 {
 		return errors.New("数据包长度少于0")
 	}
 
-	if length > 10000000 {
+	logger.AsyncInfo("MasterServer, handleAction" + fmt.Sprintf("action:%#v, dataLength:%#v", action, dataLength))
+
+	if dataLength > 10000000 {
+		socketio.Discard(dataLength)
 		panic("数据包长度超过10M, 不允许")
 	}
 
+	//var buffer = make([]byte, 1024)
+	//var data = make([]byte, 1024)
+
 	switch action {
 		case ACTION_PING:
-			socketio.Discard(4)
+			socketio.Discard(dataLength)
 			context.LastActiveTs = time.Now().Unix()
-			socketio.Write(int32ToBytes(context.LastActiveTs)) // 转成package形式
+			socketio.Write(int32ToBytes(int(context.LastActiveTs))) // 转成package形式
+			break
+		case ACTION_SYNC_DATA:
+			socketio.Discard(dataLength)
+			context.LastActiveTs = time.Now().Unix()
+			socketio.Write([]byte("this is data from server")) // 转成package形式
+			break
+
+		default:
 			break
 	}
 
-
+	return nil
 }
 
 //获取数据包的长度
-func getDataLength(socketio buffio.Reader) (int, error) {
+func getDataLength(socketio *bufio.ReadWriter) (int, error) {
 	var byteSlice = make([]byte, 4)
 
 	n, err := socketio.Read(byteSlice)
@@ -149,13 +181,6 @@ func isNewAction(action byte) bool {
 	}
 
 	return false
-}
-
-
-func CheckErr(err interface{}) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 //整形转换成字节  
