@@ -108,7 +108,14 @@ func (application *Application) StartDataBackUpServer() {
 	go func() {
 		StartMasterServer(application.ConfigData.MasterAddress)
 	}()
+}
 
+//启动数据备份client
+func (application *Application) StartDataBackUpClient() {
+
+	go func() {
+		StartClientBackUp(application.ConfigData.MasterAddress)
+	}()
 }
 
 //获取Mysql连接

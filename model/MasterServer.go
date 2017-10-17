@@ -13,13 +13,68 @@ import (
 	"idGenerator/model/logger"
 )
 
-var	contextList *list.List
+//var	contextList *list.List
+
+const (
+	STATUS_NULL = 0x00
+	STATUS_NEW = 0x01
+	STATUS_FINISH = 0xFF
+
+	//action 类型
+	ACTION_PING = 0x01
+	ACTION_SYNC_DATA = 0x02 //同步数据
+)
 
 type Context struct {
 	Connection net.Conn
 	LastActiveTs int64 //最近一次活跃的时间戳
 }
 
+type MasterServer struct{
+	ContextList *list.List
+}
+
+type Client struct {
+	Context *Context
+}
+
+var masterServer *MasterServer
+var client *Client
+
+//启动client 备份
+func StartClientBackUp(masterAddress string) {
+	_, err := net.ResolveTCPAddr("tcp", masterAddress)
+	CheckErr(err)
+
+	connection, err := net.Dial("tcp", masterAddress)
+	CheckErr(err)
+
+	now := time.Now().Unix()
+	var context = &Context{connection, now}
+
+	if client == nil {
+		client = &Client{context}
+	}
+
+	go client.sendHeartBeat()
+}
+
+//发送心跳包
+func (client *Client) sendHeartBeat() {
+	for {
+		connection := client.Context.Connection
+		//pingData = make([]byte, 9)
+		//action = G
+		binary.Write(connection, binary.BigEndian, byte(ACTION_PING))
+		binary.Write(connection, binary.BigEndian, int32(4))
+		binary.Write(connection, binary.BigEndian, int32(time.Now().Unix()))
+		//connection.Write(ACTION_PING)
+
+		time.Sleep(2 * time.Second)
+	}
+}
+
+//启动master server
 func StartMasterServer(serverAddress string) {
 	_, err := net.ResolveTCPAddr("tcp", serverAddress)
 	CheckErr(err)
@@ -31,11 +86,14 @@ func StartMasterServer(serverAddress string) {
 		listener.Close()
 	}()
 
-	if contextList == nil {
-		contextList = list.New()
+	logger.AsyncInfo("start master server on :" + serverAddress)
+
+	if masterServer == nil {
+		masterServer = &MasterServer{list.New()}
 	}
 
 	// 开启一个子 grountine 来遍历 contextList cclehui_todo
+	go masterServer.doConnectionAliveCheck()
 
 	for {
 		connection, err := listener.Accept()
@@ -49,24 +107,37 @@ func StartMasterServer(serverAddress string) {
 
 		logger.AsyncInfo("new connection:" + fmt.Sprintf("%#v", connection))
 
-		contextList.PushBack(context) //放入全局context list中
+		masterServer.ContextList.PushBack(context) //放入全局context list中
 
-		go handleConnection(context)
+		go masterServer.handleConnection(context)
 
 	}
 }
 
-const (
-	STATUS_NULL = 0x00
-	STATUS_NEW = 0x01
-	STATUS_FINISH = 0xFF
+//连接活跃情况检查
+func (masterServer *MasterServer) doConnectionAliveCheck() {
+	for {
+		for item := masterServer.ContextList.Front(); item != nil; item = item.Next() {
+			context, ok := item.Value.(*Context)
+			if !ok {
+				masterServer.ContextList.Remove(item)
+			}
 
-	//action 类型
-	ACTION_PING = 0x01
-	ACTION_SYNC_DATA = 0x02 //同步数据
-)
+			now := time.Now().Unix()
+			if now - context.LastActiveTs > 10 { //cclehui_test
+				context.Connection.Close()
+				logger.AsyncInfo("超时关闭连接:" + fmt.Sprintf("now:%#v, connection%#v", now, context))
+				masterServer.ContextList.Remove(item)
+			}
+		}
 
-func handleConnection(context *Context) {
+		time.Sleep(1 * time.Second)
+	}
+}
+
+
+//处理新 connection
+func (masterServer *MasterServer)handleConnection(context *Context) {
 	//cclehui_todo
 
 	defer func() {
@@ -115,7 +186,7 @@ func handleConnection(context *Context) {
 				}
 
 			case STATUS_NEW:
-				err = handleAction(context, curAction, socketio, dataLength)
+				err = masterServer.handleAction(context, curAction, socketio, dataLength)
 
 				dataLength = 0
 				status = STATUS_NULL
@@ -128,7 +199,7 @@ func handleConnection(context *Context) {
 }
 
 //处理请求
-func handleAction(context *Context, action byte, socketio *bufio.ReadWriter, dataLength int) error {
+func (masterServer *MasterServer)handleAction(context *Context, action byte, socketio *bufio.ReadWriter, dataLength int) error {
 	if dataLength < 0 {
 		return errors.New("数据包长度少于0")
 	}
@@ -143,15 +214,15 @@ func handleAction(context *Context, action byte, socketio *bufio.ReadWriter, dat
 	//var buffer = make([]byte, 1024)
 	//var data = make([]byte, 1024)
 
+	context.LastActiveTs = time.Now().Unix()
+
 	switch action {
 		case ACTION_PING:
 			socketio.Discard(dataLength)
-			context.LastActiveTs = time.Now().Unix()
 			socketio.Write(int32ToBytes(int(context.LastActiveTs))) // 转成package形式
 			break
 		case ACTION_SYNC_DATA:
 			socketio.Discard(dataLength)
-			context.LastActiveTs = time.Now().Unix()
 			socketio.Write([]byte("this is data from server")) // 转成package形式
 			break
 

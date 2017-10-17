@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"flag"
 	//"time"
 	//"os"
 	//"idGenerator/model/config"
@@ -28,8 +29,25 @@ func main() {
 	configLog := fmt.Sprintf("loaded config %#v\napplication base_path:%s", application.ConfigData, application.BasePath)
 	logger.AsyncInfo(configLog)
 
+	port := "8182"
+
 	//启动数据备份server
-	application.StartDataBackUpServer()
+	flag.Parse()
+	serverInstancType := flag.Arg(0)
+	switch serverInstancType {
+		case "master":
+			logger.AsyncInfo("启动备份server端程序")
+			application.StartDataBackUpServer()
+
+		case "slave":
+			logger.AsyncInfo("启动备份slave端程序")
+			port = "8183"
+			application.StartDataBackUpClient()
+
+		default:
+			logger.AsyncInfo("输入参数:" + serverInstancType)
+			panic("服务实例类型只能是master 或 slave")
+	}
 
 	//异步写log
 	logger.AsyncInfo("application inited......")
@@ -52,7 +70,7 @@ func main() {
 	r.GET("/autoincrement", controller.AutoIncrementAction)
 
 	// Listen and Server in 0.0.0.0:8182
-	r.Run(":8182")
+	r.Run(":" + port)
 
 	//r.Run() // listen and serve on 0.0.0.0:8080
 }
