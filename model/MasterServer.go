@@ -11,6 +11,8 @@ import (
 	"bufio"
 	"container/list"
 	"idGenerator/model/logger"
+	"math"
+	"strconv"
 )
 
 //var	contextList *list.List
@@ -57,6 +59,52 @@ func StartClientBackUp(masterAddress string) {
 	}
 
 	go client.sendHeartBeat()
+
+	//备份数据库
+	go client.syncDatabase()
+}
+
+//备份数据仓库
+func (client *Client) syncDatabase() {
+
+	for {
+		time.Sleep(6 * time.Second)
+
+		logger.AsyncInfo("开始同步数据")
+		connection := client.Context.Connection
+
+		reader := bufio.NewReader(connection)
+		writer := bufio.NewWriter(connection)
+
+		//获取数据的请求包
+		synDataPackage := make([]byte, 9)
+		synDataPackage[0] = ACTION_SYNC_DATA
+		synDataPackage[1] = 0
+		synDataPackage[2] = 0
+		synDataPackage[3] = 0
+		synDataPackage[4] = 4
+		//var synDataPackage = [9]byte{ACTION_SYNC_DATA,0,0,0,4}
+		now := time.Now().Unix()
+		binary.LittleEndian.PutUint32(synDataPackage[5:], uint32(now))
+
+		logger.AsyncInfo(synDataPackage)
+		num, err := writer.Write(synDataPackage)
+
+		logger.AsyncInfo("已写入:\t" + strconv.Itoa(num))
+
+		result,_,err := reader.ReadLine()
+
+		logger.AsyncInfo(err)
+		logger.AsyncInfo("返回结果:\t"  + string(result))
+
+		//go func() {
+		//
+		//
+		//}()
+		logger.AsyncInfo("同步数据 end")
+
+	}
+
 }
 
 //发送心跳包
@@ -70,7 +118,7 @@ func (client *Client) sendHeartBeat() {
 		binary.Write(connection, binary.BigEndian, int32(time.Now().Unix()))
 		//connection.Write(ACTION_PING)
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -117,6 +165,8 @@ func StartMasterServer(serverAddress string) {
 //连接活跃情况检查
 func (masterServer *MasterServer) doConnectionAliveCheck() {
 	for {
+		maxUnActiveTs := int64(math.Max(float64(GetApplication().ConfigData.MaxUnActiveTs), 10.0))
+
 		for item := masterServer.ContextList.Front(); item != nil; item = item.Next() {
 			context, ok := item.Value.(*Context)
 			if !ok {
@@ -124,7 +174,8 @@ func (masterServer *MasterServer) doConnectionAliveCheck() {
 			}
 
 			now := time.Now().Unix()
-			if now - context.LastActiveTs > 10 { //cclehui_test
+
+			if now - context.LastActiveTs > maxUnActiveTs {
 				context.Connection.Close()
 				logger.AsyncInfo("超时关闭连接:" + fmt.Sprintf("now:%#v, connection%#v", now, context))
 				masterServer.ContextList.Remove(item)

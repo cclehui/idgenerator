@@ -12,7 +12,20 @@ import(
     "github.com/gin-gonic/gin"
     "idGenerator/model"
     "idGenerator/controller"
+    "fmt"
+    "os"
+	//"encoding/binary"
+	"time"
+	"encoding/binary"
+	"bytes"
 )
+
+func bytesToInt32(b []byte) uint32 {
+	bytesBuffer := bytes.NewBuffer(b)
+	var tmp int32
+	binary.Read(bytesBuffer, binary.LittleEndian, &tmp)
+	return uint32(tmp)
+}
 
 
 //每个业务对应一个 key 全局唯一
@@ -21,34 +34,27 @@ import(
 
 func main() {
 
-    //初始化application
-    application := model.GetApplication();
+    var synDataPackage = [9]byte{2,0,0,0,4}
 
-    //加载配置
-    application.InitConfig("");
+    now := time.Now().Unix()
 
-    //异步写log
-    logger.AsyncInfo("application inited......");
+    temp := make([]byte, 4)
+    //temp := synDataPackage[5:]
 
-    //r := gin.Default()
-    r := gin.New()
-    r.Use(logger.LoggerHanderFunc())
-    r.Use(gin.Recovery())
+    binary.LittleEndian.PutUint32(synDataPackage[5:], uint32(now))
+    binary.LittleEndian.PutUint32(temp, uint32(now))
 
-    r.GET("/ping", func(c *gin.Context) {
-        c.JSON(200, gin.H{
-            "message": "pong",
-        })
-    })
+    //synDataPackage[5] = byte(now >> 3)
+    //synDataPackage[6] = byte(now >> 2)
+    //synDataPackage[7] = byte(now >> 1)
+    //synDataPackage[8] = byte(now)
 
-    // Snow Flake算法
-    r.GET("/snowflake/:id", controller.SnowFlakeAction)
+    fmt.Println(synDataPackage);
+    fmt.Println(temp);
+    fmt.Println(binary.LittleEndian.Uint32(temp));
+    fmt.Println(now);
+    fmt.Println(binary.LittleEndian.Uint32(synDataPackage[5:]));
 
-    //自增方式
-    r.GET("/autoincrement", controller.AutoIncrementAction)
+    os.Exit(0)
 
-    // Listen and Server in 0.0.0.0:8182
-    r.Run(":8182")
-
-    //r.Run() // listen and serve on 0.0.0.0:8080
 }
