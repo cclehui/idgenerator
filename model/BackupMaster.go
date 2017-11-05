@@ -22,6 +22,8 @@ const (
 	STATUS_NULL = 0x00
 	STATUS_NEW = 0x01
 	STATUS_FINISH = 0xFF
+
+	TIME_FORMAT = "2006-01-02 15:04:05"
 )
 
 type Context struct {
@@ -31,9 +33,10 @@ type Context struct {
 }
 
 //往socket中写数据
-func (context *Context) write(dataPackage *BackupPackage) (n int, err error) {
+func (context *Context) writePackage(dataPackage *BackupPackage) (n int, err error) {
 
 	defer func() {
+		context.updateAliveTs() //更新活跃时间
 		context.Lock.Unlock()
 	}()
 
@@ -208,16 +211,28 @@ func (masterServer *MasterServer)handleAction(context *Context, action byte, soc
 		case ACTION_PING:
 			socketio.Discard(dataLength)
 
+			dataPackage  := NewBackupPackage(ACTION_PING)
+			dataPackage.encodeData(int32ToBytes(int(context.LastActiveTs)))
+
+			n, err :=context.writePackage(dataPackage)
 			//context.write()
-			socketio.Write(int32ToBytes(int(context.LastActiveTs))) // 转成package形式
+			//socketio.Write(int32ToBytes(int(context.LastActiveTs))) // 转成package形式
+			logger.AsyncInfo(fmt.Sprintf("ping action: %#v, $#v", n, err))
 			break
+
 		case ACTION_SYNC_DATA:
 			socketio.Discard(dataLength)
-			logger.AsyncInfo("开始备份数据\t" + time.Now().Format("2006-01-02 15:04:05") )
-			context.Connection.Write([]byte("this is data from server, " + time.Now().Format("2006-01-02 15:04:05") + "\n")) // 转成package形式
+			logger.AsyncInfo("开始备份数据\t" + time.Now().Format(TIME_FORMAT) )
+
+			dataPackage := NewBackupPackage(ACTION_SYNC_DATA)
+			dataPackage.encodeData([]byte("this is data from server, " + time.Now().Format(TIME_FORMAT) + "\n"))
+
+			n, err := context.writePackage(dataPackage)
+
+			//context.Connection.Write()) // 转成package形式
 			//socketio.Flush()
 			//binary.Write(socketio, binary.BigEndian, []byte("this is data from server\n"))
-			logger.AsyncInfo("end备份数据\t" + time.Now().Format("2006-01-02 15:04:05") )
+			logger.AsyncInfo(fmt.Sprintf("end备份数据\t%#v, %#v, %#v", time.Now().Format(TIME_FORMAT), n, err ))
 			break
 
 		default:

@@ -8,6 +8,7 @@ import (
 	"idGenerator/model/logger"
 	//"strconv"
 	"fmt"
+	"sync"
 )
 
 //var	contextList *list.List
@@ -27,7 +28,8 @@ func StartClientBackUp(masterAddress string) {
 	CheckErr(err)
 
 	now := time.Now().Unix()
-	var context = &Context{connection, now}
+	lock := new(sync.Mutex)
+	var context = &Context{connection, now,lock}
 
 	if client == nil {
 		client = &Client{context}
@@ -68,6 +70,8 @@ func (client *Client) syncDatabase() {
 		num, err := connection.Write(synDataPackage)
 
 		logger.AsyncInfo(fmt.Sprintf("写入:%#v字节 ,error: %#v", num, err))
+
+		//读数据 start
 
 		result,_,err := reader.ReadLine()
 		logger.AsyncInfo(fmt.Sprintf("返回结果:%s, error:%#v" , result, err))
