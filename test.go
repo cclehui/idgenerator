@@ -3,16 +3,7 @@ package main
 //import  idGenerator "idGenerator/model"
 
 import(
-    //"fmt"
-    //"time"
-    //"os"
-    //"idGenerator/model/config"
-    //"idGenerator/model/persistent"
-    "idGenerator/model/logger"
-    "github.com/gin-gonic/gin"
-    "idGenerator/model"
-    "idGenerator/controller"
-    "fmt"
+	"fmt"
     "os"
 	//"encoding/binary"
 	"time"
@@ -33,6 +24,8 @@ func bytesToInt32(b []byte) uint32 {
 //var idWorkerMap = cmap.New();
 
 func main() {
+
+	fmt.Println(time.Now().Format("2006-01-02 12:04:05"))
 
     var synDataPackage = [9]byte{2,0,0,0,4}
 

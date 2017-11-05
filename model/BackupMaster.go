@@ -13,6 +13,7 @@ import (
 	"idGenerator/model/logger"
 	"math"
 	"strconv"
+	"sync"
 )
 
 //var	contextList *list.List
@@ -21,107 +22,44 @@ const (
 	STATUS_NULL = 0x00
 	STATUS_NEW = 0x01
 	STATUS_FINISH = 0xFF
-
-	//action 类型
-	ACTION_PING = 0x01
-	ACTION_SYNC_DATA = 0x02 //同步数据
 )
 
 type Context struct {
 	Connection net.Conn
 	LastActiveTs int64 //最近一次活跃的时间戳
+	Lock *sync.Mutex
+}
+
+//往socket中写数据
+func (context *Context) write(dataPackage *BackupPackage) (n int, err error) {
+
+	defer func() {
+		context.Lock.Unlock()
+	}()
+
+	context.Lock.Lock()
+	n, err = context.Connection.Write(dataPackage.getHeader())
+	if err != nil {
+		return n, err
+	}
+
+	n, err = context.Connection.Write(dataPackage.Data)
+	if err != nil {
+		return n, err
+	}
+
+	return n,err
+}
+
+func (context *Context) updateAliveTs() {
+	context.LastActiveTs = time.Now().Unix()
 }
 
 type MasterServer struct{
 	ContextList *list.List
 }
 
-type Client struct {
-	Context *Context
-}
-
 var masterServer *MasterServer
-var client *Client
-
-//启动client 备份
-func StartClientBackUp(masterAddress string) {
-	_, err := net.ResolveTCPAddr("tcp", masterAddress)
-	CheckErr(err)
-
-	connection, err := net.Dial("tcp", masterAddress)
-	CheckErr(err)
-
-	now := time.Now().Unix()
-	var context = &Context{connection, now}
-
-	if client == nil {
-		client = &Client{context}
-	}
-
-	go client.sendHeartBeat()
-
-	//备份数据库
-	go client.syncDatabase()
-}
-
-//备份数据仓库
-func (client *Client) syncDatabase() {
-
-	for {
-		time.Sleep(6 * time.Second)
-
-		logger.AsyncInfo("开始同步数据")
-		connection := client.Context.Connection
-
-		reader := bufio.NewReader(connection)
-		writer := bufio.NewWriter(connection)
-
-		//获取数据的请求包
-		synDataPackage := make([]byte, 9)
-		synDataPackage[0] = ACTION_SYNC_DATA
-		synDataPackage[1] = 0
-		synDataPackage[2] = 0
-		synDataPackage[3] = 0
-		synDataPackage[4] = 4
-		//var synDataPackage = [9]byte{ACTION_SYNC_DATA,0,0,0,4}
-		now := time.Now().Unix()
-		binary.LittleEndian.PutUint32(synDataPackage[5:], uint32(now))
-
-		logger.AsyncInfo(synDataPackage)
-		num, err := writer.Write(synDataPackage)
-
-		logger.AsyncInfo("已写入:\t" + strconv.Itoa(num))
-
-		result,_,err := reader.ReadLine()
-
-		logger.AsyncInfo(err)
-		logger.AsyncInfo("返回结果:\t"  + string(result))
-
-		//go func() {
-		//
-		//
-		//}()
-		logger.AsyncInfo("同步数据 end")
-
-	}
-
-}
-
-//发送心跳包
-func (client *Client) sendHeartBeat() {
-	for {
-		connection := client.Context.Connection
-		//pingData = make([]byte, 9)
-		//action = G
-		binary.Write(connection, binary.BigEndian, byte(ACTION_PING))
-		binary.Write(connection, binary.BigEndian, int32(4))
-		binary.Write(connection, binary.BigEndian, int32(time.Now().Unix()))
-		//connection.Write(ACTION_PING)
-
-		time.Sleep(5 * time.Second)
-	}
-}
-
 //启动master server
 func StartMasterServer(serverAddress string) {
 	_, err := net.ResolveTCPAddr("tcp", serverAddress)
@@ -151,7 +89,8 @@ func StartMasterServer(serverAddress string) {
 		}
 
 		now := time.Now().Unix()
-		var context = &Context{connection, now}
+		lock := new(sync.Mutex)
+		var context = &Context{connection, now, lock}
 
 		logger.AsyncInfo("new connection:" + fmt.Sprintf("%#v", connection))
 
@@ -211,6 +150,7 @@ func (masterServer *MasterServer)handleConnection(context *Context) {
 
 	FORLABEL:
 	for {
+		logger.AsyncInfo("current status: " + strconv.Itoa(status))
 		switch status {
 			case STATUS_NULL:
 				curAction, err = socketio.ReadByte()
@@ -262,19 +202,22 @@ func (masterServer *MasterServer)handleAction(context *Context, action byte, soc
 		panic("数据包长度超过10M, 不允许")
 	}
 
-	//var buffer = make([]byte, 1024)
-	//var data = make([]byte, 1024)
-
-	context.LastActiveTs = time.Now().Unix()
+	context.updateAliveTs()
 
 	switch action {
 		case ACTION_PING:
 			socketio.Discard(dataLength)
+
+			//context.write()
 			socketio.Write(int32ToBytes(int(context.LastActiveTs))) // 转成package形式
 			break
 		case ACTION_SYNC_DATA:
 			socketio.Discard(dataLength)
-			socketio.Write([]byte("this is data from server")) // 转成package形式
+			logger.AsyncInfo("开始备份数据\t" + time.Now().Format("2006-01-02 15:04:05") )
+			context.Connection.Write([]byte("this is data from server, " + time.Now().Format("2006-01-02 15:04:05") + "\n")) // 转成package形式
+			//socketio.Flush()
+			//binary.Write(socketio, binary.BigEndian, []byte("this is data from server\n"))
+			logger.AsyncInfo("end备份数据\t" + time.Now().Format("2006-01-02 15:04:05") )
 			break
 
 		default:
