@@ -33,9 +33,9 @@ func main() {
 	temp = append(temp, 0x2)
 
 
-	temp = []byte{0x0, 0x0, 0x0, 0x2e};
-	length := bytesToInt32(temp)
-	fmt.Printf("%#v, %#v", temp, length)
+	temp = []byte{0x0, 0x0, 0x1, 0x2e};
+	//length := bytesToInt32(temp)
+	fmt.Printf("%#v, %#v", temp, temp[0:2])
 
 	//fmt.Printf("aaa:%#v", reflect.TypeOf(model.ACTION_SYNC_DATA).Name())
 	os.Exit(0)

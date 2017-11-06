@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"sync"
 	//"context"
+	"os"
+	"path"
 )
 
 //var	contextList *list.List
@@ -174,12 +176,56 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 	case ACTION_SYNC_DATA:
 		logger.AsyncInfo("开始备份数据\t" + time.Now().Format(TIME_FORMAT) )
 
-		dataPackage := NewBackupPackage(ACTION_SYNC_DATA)
-		dataPackage.encodeData([]byte("this is data from server, " + time.Now().Format(TIME_FORMAT) + "\n"))
-
-		n, err := context.writePackage(dataPackage)
-		logger.AsyncInfo(fmt.Sprintf("end备份数据\t%#v, %#v, %#v", time.Now().Format(TIME_FORMAT), n, err ))
+		// start 复制临时文件
+		srcFile, err := os.Open(GetApplication().ConfigData.Bolt.FilePath)
+		defer srcFile.Close()
 		checkErr(err)
+
+		destFilePath := path.Join(path.Dir(GetApplication().ConfigData.Bolt.FilePath), fmt.Sprintf("%d_%s_%s", os.Getpid(), MyMd5(context.Connection.RemoteAddr()), time.Now().Format("2006010215")))
+		logger.AsyncInfo("临时文件路径:" + destFilePath)
+		destFile, err := os.OpenFile(destFilePath, os.O_WRONLY|os.O_CREATE, 0644)
+		defer os.Remove(destFilePath) //同步完成删除临时文件
+
+		_, err = io.Copy(destFile, srcFile)
+		checkErr(err)
+		destFile.Close()
+
+		//end 复制临时文件
+
+		destFile, err = os.Open(destFilePath)
+		checkErr(err)
+
+		buffer := make([]byte, 1024)
+		var isChunk bool = false
+		var totalBytes int64 = 0;
+
+		for {
+			n, err := destFile.Read(buffer)
+			if n <= 0 || (err != nil  && err != io.EOF) {
+				logger.AsyncInfo(fmt.Sprintf("读文件内容异常, %d,  %#v", n, err))
+				break
+			}
+
+			var dataPackage *BackupPackage
+
+			if isChunk {
+				dataPackage = NewBackupPackage(ACTION_CHUNK_DATA)
+			} else {
+				dataPackage = NewBackupPackage(ACTION_SYNC_DATA)
+				isChunk = true
+			}
+
+			dataPackage.encodeData(buffer[0:n])
+			_, err = context.writePackage(dataPackage)
+			checkErr(err)
+
+			totalBytes += int64(n)
+
+			if n < 1024 {
+				break
+			}
+		}
+		logger.AsyncInfo(fmt.Sprintf("end备份数据\t%#v, %#v", time.Now().Format(TIME_FORMAT), totalBytes))
 		break
 
 	default:

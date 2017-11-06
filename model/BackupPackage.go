@@ -15,6 +15,7 @@ const (
 	//ACTION_NULL = 0x03
 	ACTION_PING byte = 0x01
 	ACTION_SYNC_DATA byte = 0x02 //同步数据
+	ACTION_CHUNK_DATA byte = 0x03 //同步数据，块数据
 
 	DATA_LEGTH_TAG = 4
 

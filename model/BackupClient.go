@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sync"
 	//"bufio"
+	"os"
 )
 
 //var	contextList *list.List
@@ -72,6 +73,9 @@ func (client *Client) doAction() {
 	go client.sendSyncDatabaseRequest()
 
 	//读数据
+	var backupDataFile *os.File = nil
+	var err error
+	var totalSize int64 = 0
 	for {
 		logger.AsyncInfo("开始解包")
 		connection := client.Context.Connection
@@ -81,7 +85,32 @@ func (client *Client) doAction() {
 		case ACTION_PING:
 			logger.AsyncInfo("心跳包返回")
 		case ACTION_SYNC_DATA:
-			logger.AsyncInfo(fmt.Sprintf("解包结果:%#v, length:%d, data:%#v", dataPackage.ActionType, dataPackage.DataLength, string(dataPackage.Data)))
+			logger.AsyncInfo(fmt.Sprintf("上次同步数据 total size: %d", totalSize ))
+
+			backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_CREATE, 0644)
+			defer backupDataFile.Close()
+			checkErr(err)
+
+			n, err := backupDataFile.Write(dataPackage.Data)
+			checkErr(err)
+
+			//重新以append 方式打开文件
+			backupDataFile.Close()
+			backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_APPEND, 0644)
+			defer backupDataFile.Close()
+			checkErr(err)
+
+			totalSize = int64(n)
+
+			//logger.AsyncInfo(fmt.Sprintf("解包结果:%#v, length:%d, data:%#v", dataPackage.ActionType, dataPackage.DataLength, string(dataPackage.Data)))
+		case ACTION_CHUNK_DATA:
+			if backupDataFile != nil {
+				n, err := backupDataFile.Write(dataPackage.Data)
+				checkErr(err)
+
+				totalSize += int64(n)
+			}
+
 		default:
 			logger.AsyncInfo(fmt.Sprintf("未识别的包, %#v", dataPackage))
 		}
@@ -104,10 +133,8 @@ func (client *Client) reConnect() {
 func (client *Client) sendSyncDatabaseRequest() {
 
 	for {
-		time.Sleep(3 * time.Second)
-
-		logger.AsyncInfo("开始同步数据")
-
+		//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx , 上一次的没同步完成， 这里有重发请求了 ！！！！！
+		time.Sleep(6 * time.Second)
 
 		//获取数据的请求包
 		requestDataPackage := NewBackupPackage(ACTION_SYNC_DATA)
@@ -133,7 +160,7 @@ func (client *Client) sendHeartBeat() {
 		//connection.Write(ACTION_PING)
 
 		num, err := client.Context.writePackage(pingPacakge)
-		logger.AsyncInfo(fmt.Sprintf("heart beat: send beat, %#v, %#v", num, err))
+		logger.AsyncInfo(fmt.Sprintf("发起心跳包: send beat, %#v, %#v", num, err))
 
 		time.Sleep(5 * time.Second)
 	}
