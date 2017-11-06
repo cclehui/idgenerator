@@ -36,6 +36,11 @@ func GetLogger() *MyLogger {
 	return loggerInstance
 }
 
+func AsyncDebug(logData interface{}) {
+
+
+}
+
 //异步写Log
 func AsyncInfo(logData interface{}) {
 	myLogger := GetLogger()
