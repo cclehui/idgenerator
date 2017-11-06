@@ -210,22 +210,30 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 
 			if isChunk {
 				dataPackage = NewBackupPackage(ACTION_CHUNK_DATA)
+				//dataPackage = NewBackupPackage(ACTION_SYNC_DATA)
 			} else {
 				dataPackage = NewBackupPackage(ACTION_SYNC_DATA)
 				isChunk = true
 			}
 
 			dataPackage.encodeData(buffer[0:n])
+			logger.AsyncInfo(fmt.Sprintf("同步包, action:%#v, length:%d", dataPackage.ActionType, dataPackage.DataLength))
+			if dataPackage.ActionType == ACTION_SYNC_DATA {
+				logger.AsyncInfo(dataPackage)
+			}
+
 			_, err = context.writePackage(dataPackage)
 			checkErr(err)
 
 			totalBytes += int64(n)
 
+			//time.Sleep(1 * time.Second)
+
 			if n < 1024 {
 				break
 			}
 		}
-		logger.AsyncInfo(fmt.Sprintf("end备份数据\t%#v, %#v", time.Now().Format(TIME_FORMAT), totalBytes))
+		logger.AsyncInfo(fmt.Sprintf("end备份数据\t%#v, total size: %#v", time.Now().Format(TIME_FORMAT), totalBytes))
 		break
 
 	default:

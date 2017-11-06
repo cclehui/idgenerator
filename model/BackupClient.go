@@ -23,10 +23,11 @@ var client *Client
 
 //启动client 备份
 func StartClientBackUp(masterAddress string) {
-	_, err := net.ResolveTCPAddr("tcp", masterAddress)
+	tcpAddress, err := net.ResolveTCPAddr("tcp", masterAddress)
 	CheckErr(err)
 
-	connection, err := net.Dial("tcp", masterAddress)
+	//connection, err := net.Dial("tcp", masterAddress)
+	connection, err := net.DialTCP("tcp", nil, tcpAddress)
 	CheckErr(err)
 
 	now := time.Now().Unix()
@@ -67,7 +68,7 @@ func (client *Client) doAction() {
 		}
 	}()
 
-	go client.sendHeartBeat()
+	//go client.sendHeartBeat()
 
 	//发送数据备份的请求
 	go client.sendSyncDatabaseRequest()
@@ -78,8 +79,9 @@ func (client *Client) doAction() {
 	var totalSize int64 = 0
 	for {
 		logger.AsyncInfo("开始解包")
-		connection := client.Context.Connection
-		dataPackage := GetDecodedPackageData(connection)
+		dataPackage := GetDecodedPackageData(client.Context.Connection)
+		logger.AsyncInfo(fmt.Sprintf("包内容， action:%#v, length:%d", dataPackage.ActionType, dataPackage.DataLength))
+		//logger.AsyncInfo(dataPackage)
 
 		switch dataPackage.ActionType {
 		case ACTION_PING:
@@ -114,6 +116,8 @@ func (client *Client) doAction() {
 		default:
 			logger.AsyncInfo(fmt.Sprintf("未识别的包, %#v", dataPackage))
 		}
+
+		logger.AsyncInfo("end 解包 xxxx")
 	}
 }
 
@@ -132,7 +136,7 @@ func (client *Client) reConnect() {
 //发送备份数据仓库的reqeust
 func (client *Client) sendSyncDatabaseRequest() {
 
-	for {
+	//for {
 		//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx , 上一次的没同步完成， 这里有重发请求了 ！！！！！
 		time.Sleep(6 * time.Second)
 
@@ -143,7 +147,7 @@ func (client *Client) sendSyncDatabaseRequest() {
 		//logger.AsyncInfo(requestDataPackage)
 		num, err := client.Context.writePackage(requestDataPackage)
 		logger.AsyncInfo(fmt.Sprintf("发起数据同步请求:%#v字节 ,error: %#v", num, err))
-	}
+	//}
 
 }
 

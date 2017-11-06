@@ -5,8 +5,7 @@ import (
 	"net"
 	"bufio"
 	"fmt"
-	//"math"
-	"idGenerator/model/logger"
+
 	"encoding/binary"
 )
 
@@ -59,7 +58,7 @@ func GetDecodedPackageData(conn net.Conn) *BackupPackage {
 	actionType,err := reader.ReadByte()
 	checkErr(err)
 
-	logger.AsyncInfo(fmt.Sprintf("action: %#v", actionType))
+	//logger.AsyncInfo(fmt.Sprintf("action: %#v", actionType))
 
 	packageData.ActionType = actionType
 
@@ -72,7 +71,7 @@ func GetDecodedPackageData(conn net.Conn) *BackupPackage {
 		checkErr(fmt.Sprintf("获取包长度异常: err:%#v", err))
 	}
 
-	logger.AsyncInfo(fmt.Sprintf("length:%#v", packageData.DataLength))
+	//logger.AsyncInfo(fmt.Sprintf("length:%#v", packageData.DataLength))
 
 	packageData.Data = make([]byte, packageData.DataLength)
 
