@@ -5,13 +5,16 @@ import (
 	"net"
 	"bufio"
 	"fmt"
+	//"math"
+	"idGenerator/model/logger"
+	"encoding/binary"
 )
 
 const (
 	//ActionType 类型
 	//ACTION_NULL = 0x03
-	ACTION_PING = 0x01
-	ACTION_SYNC_DATA = 0x02 //同步数据
+	ACTION_PING byte = 0x01
+	ACTION_SYNC_DATA byte = 0x02 //同步数据
 
 	DATA_LEGTH_TAG = 4
 
@@ -40,14 +43,14 @@ func (backupPackage *BackupPackage) encodeData(data []byte) {
 func (backupPackage *BackupPackage) getHeader() []byte {
 	result := make([]byte, 5);
 
-	result = append(result, backupPackage.ActionType)
-	result = append(result, int32ToBytes(int(backupPackage.DataLength))...)
-
+	result[0] = backupPackage.ActionType
+	for index,value := range int32ToBytes(int(backupPackage.DataLength)) {
+		result[index + 1] = value
+	}
 	return result
 }
 
-func getPackageData(conn net.Conn) *BackupPackage {
-
+func GetDecodedPackageData(conn net.Conn) *BackupPackage {
 	reader := bufio.NewReader(conn)
 
 	packageData := new(BackupPackage)
@@ -55,19 +58,30 @@ func getPackageData(conn net.Conn) *BackupPackage {
 	actionType,err := reader.ReadByte()
 	checkErr(err)
 
+	logger.AsyncInfo(fmt.Sprintf("action: %#v", actionType))
+
 	packageData.ActionType = actionType
 
-	dataLength := make([]byte, DATA_LEGTH_TAG)
-	n, err := reader.Read(dataLength)
-	if n < DATA_LEGTH_TAG || err != nil {
-		checkErr(fmt.Sprintf("解包长度异常:n:%#v, err:%#v", n, err))
+	//tempBuffer := make([]byte, DATA_LEGTH_TAG)
+	//n, err := reader.Read(tempBuffer)
+	//packageData.DataLength = int32(bytesToInt(tempBuffer))
+
+	err = binary.Read(reader, binary.BigEndian, &packageData.DataLength)
+	if err != nil {
+		checkErr(fmt.Sprintf("获取包长度异常: err:%#v", err))
 	}
 
-	//cclehui_todo
+	logger.AsyncInfo(fmt.Sprintf("length:%#v", packageData.DataLength))
 
+	packageData.Data = make([]byte, packageData.DataLength)
 
+	n, err := reader.Read(packageData.Data)
 
+	if n < int(packageData.DataLength) || err != nil {
+		checkErr(fmt.Sprintf("获取数据异常:n:%#v, err:%#v", n, err))
+	}
 
+	return packageData
 }
 
 func NewBackupPackage(actionType byte) *BackupPackage {

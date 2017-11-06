@@ -4,11 +4,11 @@ import (
 	"net"
 	"time"
 	"encoding/binary"
-	"bufio"
 	"idGenerator/model/logger"
 	//"strconv"
 	"fmt"
 	"sync"
+	//"bufio"
 )
 
 //var	contextList *list.List
@@ -50,7 +50,7 @@ func (client *Client) syncDatabase() {
 		logger.AsyncInfo("开始同步数据")
 		connection := client.Context.Connection
 
-		reader := bufio.NewReader(connection)
+
 		//writer := bufio.NewWriter(connection)
 
 		//获取数据的请求包
@@ -72,9 +72,13 @@ func (client *Client) syncDatabase() {
 		logger.AsyncInfo(fmt.Sprintf("写入:%#v字节 ,error: %#v", num, err))
 
 		//读数据 start
+		dataPackage := GetDecodedPackageData(connection)
+		logger.AsyncInfo(fmt.Sprintf("返回结果:%#v, length:%d, data:%#v" , dataPackage.ActionType, dataPackage.DataLength, string(dataPackage.Data)))
 
-		result,_,err := reader.ReadLine()
-		logger.AsyncInfo(fmt.Sprintf("返回结果:%s, error:%#v" , result, err))
+		//reader := bufio.NewReader(connection)
+		//result,_,err := reader.ReadLine()
+		//logger.AsyncInfo(fmt.Sprintf("返回结果:%#v, error:%#v", result, err))
+		//logger.AsyncInfo(string(result))
 
 		//go func() {
 		//

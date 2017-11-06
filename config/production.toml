@@ -12,7 +12,8 @@ serverType="master"
 
 # master 数据同步的 ip和端口
 #masterAddress="localhost:9000"
-masterAddress="192.168.0.101:9000"
+#masterAddress="192.168.0.101:9000"
+masterAddress="172.16.35.246:9000"
 
 #master slave 连接不活跃的时间 单位秒
 maxUnActiveTs=30

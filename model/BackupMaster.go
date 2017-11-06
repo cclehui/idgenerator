@@ -41,15 +41,21 @@ func (context *Context) writePackage(dataPackage *BackupPackage) (n int, err err
 	}()
 
 	context.Lock.Lock()
-	n, err = context.Connection.Write(dataPackage.getHeader())
+
+	writer := bufio.NewWriter(context.Connection)
+	n, err = writer.Write(dataPackage.getHeader())
+	//n, err = context.Connection.Write(dataPackage.getHeader())
 	if err != nil {
 		return n, err
 	}
 
-	n, err = context.Connection.Write(dataPackage.Data)
+	//n, err = context.Connection.Write(dataPackage.Data)
+	n, err = writer.Write(dataPackage.Data)
 	if err != nil {
 		return n, err
 	}
+
+	writer.Flush()
 
 	return n,err
 }
