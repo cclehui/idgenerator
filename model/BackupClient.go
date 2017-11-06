@@ -6,7 +6,9 @@ import (
 	"encoding/binary"
 	"bufio"
 	"idGenerator/model/logger"
-	"strconv"
+	//"strconv"
+	"fmt"
+	"sync"
 )
 
 //var	contextList *list.List
@@ -26,7 +28,8 @@ func StartClientBackUp(masterAddress string) {
 	CheckErr(err)
 
 	now := time.Now().Unix()
-	var context = &Context{connection, now}
+	lock := new(sync.Mutex)
+	var context = &Context{connection, now,lock}
 
 	if client == nil {
 		client = &Client{context}
@@ -42,13 +45,13 @@ func StartClientBackUp(masterAddress string) {
 func (client *Client) syncDatabase() {
 
 	for {
-		time.Sleep(6 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		logger.AsyncInfo("开始同步数据")
 		connection := client.Context.Connection
 
 		reader := bufio.NewReader(connection)
-		writer := bufio.NewWriter(connection)
+		//writer := bufio.NewWriter(connection)
 
 		//获取数据的请求包
 		synDataPackage := make([]byte, 9)
@@ -62,15 +65,16 @@ func (client *Client) syncDatabase() {
 		binary.LittleEndian.PutUint32(synDataPackage[5:], uint32(now))
 
 		logger.AsyncInfo(synDataPackage)
-		num, err := writer.Write(synDataPackage)
-		writer.Flush()
+		//err := binary.Write(connection, binary.BigEndian, synDataPackage)
+		//num, err := writer.Write(synDataPackage)
+		num, err := connection.Write(synDataPackage)
 
-		logger.AsyncInfo("已写入:\t" + strconv.Itoa(num))
+		logger.AsyncInfo(fmt.Sprintf("写入:%#v字节 ,error: %#v", num, err))
+
+		//读数据 start
 
 		result,_,err := reader.ReadLine()
-
-		logger.AsyncInfo(err)
-		logger.AsyncInfo("返回结果:\t"  + string(result))
+		logger.AsyncInfo(fmt.Sprintf("返回结果:%s, error:%#v" , result, err))
 
 		//go func() {
 		//

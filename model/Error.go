@@ -5,3 +5,8 @@ func CheckErr(err interface{}) {
 		panic(err)
 	}
 }
+
+func SocketIOErrCheck(err interface{}) {
+
+
+}
