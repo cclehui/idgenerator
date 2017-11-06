@@ -14,6 +14,7 @@ import (
 	"math"
 	"strconv"
 	"sync"
+	//"context"
 )
 
 //var	contextList *list.List
@@ -134,11 +135,62 @@ func (masterServer *MasterServer) doConnectionAliveCheck() {
 	}
 }
 
+func (masterServer *MasterServer) handleConnection(context *Context) {
+	defer func() {
+		context.Connection.Close()
 
-//处理新 connection
-func (masterServer *MasterServer)handleConnection(context *Context) {
-	//cclehui_todo
+		err := recover()
+		if err != nil {
+			logger.AsyncInfo(err)
+		}
+	}()
 
+	for {
+
+		dataPackage := GetDecodedPackageData(context.Connection)
+		context.LastActiveTs = time.Now().Unix()
+
+		masterServer.handleAction(context, dataPackage)
+	}
+}
+
+func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *BackupPackage) {
+
+	if dataPacakge.DataLength < 0 {
+		panic("数据包长度少于0")
+	}
+
+	logger.AsyncInfo("MasterServer, handleAction" + fmt.Sprintf("dataPacakge:%#v", dataPacakge))
+
+	switch dataPacakge.ActionType {
+	case ACTION_PING:
+		dataPackage  := NewBackupPackage(ACTION_PING)
+		dataPackage.encodeData(int32ToBytes(int(context.LastActiveTs)))
+		n, err :=context.writePackage(dataPackage)
+		logger.AsyncInfo(fmt.Sprintf("心跳包: %#v, $#v", n, err))
+		checkErr(err)
+		break
+
+	case ACTION_SYNC_DATA:
+		logger.AsyncInfo("开始备份数据\t" + time.Now().Format(TIME_FORMAT) )
+
+		dataPackage := NewBackupPackage(ACTION_SYNC_DATA)
+		dataPackage.encodeData([]byte("this is data from server, " + time.Now().Format(TIME_FORMAT) + "\n"))
+
+		n, err := context.writePackage(dataPackage)
+		logger.AsyncInfo(fmt.Sprintf("end备份数据\t%#v, %#v, %#v", time.Now().Format(TIME_FORMAT), n, err ))
+		checkErr(err)
+		break
+
+	default:
+		logger.AsyncInfo("不识别的action")
+	}
+
+	return
+}
+
+//处理新 connection  废弃了
+func (masterServer *MasterServer) handleConnectionOld(context *Context) {
 	defer func() {
 		context.Connection.Close()
 
@@ -186,7 +238,7 @@ func (masterServer *MasterServer)handleConnection(context *Context) {
 				}
 
 			case STATUS_NEW:
-				err = masterServer.handleAction(context, curAction, socketio, dataLength)
+				err = masterServer.handleActionOld(context, curAction, socketio, dataLength)
 
 				dataLength = 0
 				status = STATUS_NULL
@@ -198,8 +250,8 @@ func (masterServer *MasterServer)handleConnection(context *Context) {
 	}
 }
 
-//处理请求
-func (masterServer *MasterServer)handleAction(context *Context, action byte, socketio *bufio.ReadWriter, dataLength int) error {
+//处理请求 废弃了
+func (masterServer *MasterServer)handleActionOld(context *Context, action byte, socketio *bufio.ReadWriter, dataLength int) error {
 	if dataLength < 0 {
 		return errors.New("数据包长度少于0")
 	}
