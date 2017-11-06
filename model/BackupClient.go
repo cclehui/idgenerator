@@ -3,7 +3,7 @@ package model
 import (
 	"net"
 	"time"
-	"encoding/binary"
+	//"encoding/binary"
 	"idGenerator/model/logger"
 	//"strconv"
 	"fmt"
@@ -15,6 +15,7 @@ import (
 
 type Client struct {
 	Context *Context
+	MasterAddress string
 }
 
 var client *Client
@@ -32,74 +33,107 @@ func StartClientBackUp(masterAddress string) {
 	var context = &Context{connection, now,lock}
 
 	if client == nil {
-		client = &Client{context}
+		client = &Client{context, masterAddress}
 	}
 
-	//go client.sendHeartBeat()
-
 	//备份数据库
-	go client.syncDatabase()
+	go func() {
+		for {
+			logger.AsyncInfo("启动主从同步操作")
+			client.doAction()
+
+			time.Sleep(2 * time.Second)
+		}
+	}()
 }
 
-//备份数据仓库
-func (client *Client) syncDatabase() {
+func (client *Client) doAction() {
+	defer func() {
+		err := recover()
+		logger.AsyncInfo("重连master 异常捕获")
+		logger.AsyncInfo(err)
+	}()
+
+	defer func() {
+		err := recover()
+		if err != nil {
+			logger.AsyncInfo(err)
+
+			if _, ok := err.(*net.OpError); ok {
+				logger.AsyncInfo("重连master")
+				client.reConnect()//尝试重连
+			}
+		}
+	}()
+
+	go client.sendHeartBeat()
+
+	//发送数据备份的请求
+	go client.sendSyncDatabaseRequest()
+
+	//读数据
+	for {
+		logger.AsyncInfo("开始解包")
+		connection := client.Context.Connection
+		dataPackage := GetDecodedPackageData(connection)
+
+		switch dataPackage.ActionType {
+		case ACTION_PING:
+			logger.AsyncInfo("心跳包返回")
+		case ACTION_SYNC_DATA:
+			logger.AsyncInfo(fmt.Sprintf("解包结果:%#v, length:%d, data:%#v", dataPackage.ActionType, dataPackage.DataLength, string(dataPackage.Data)))
+		default:
+			logger.AsyncInfo(fmt.Sprintf("未识别的包, %#v", dataPackage))
+		}
+	}
+}
+
+//重连master
+func (client *Client) reConnect() {
+	_, err := net.ResolveTCPAddr("tcp", client.MasterAddress)
+	CheckErr(err)
+
+	connection, err := net.Dial("tcp", client.MasterAddress)
+	CheckErr(err)
+
+	client.Context.Connection = connection
+	client.Context.LastActiveTs = time.Now().Unix()
+}
+
+//发送备份数据仓库的reqeust
+func (client *Client) sendSyncDatabaseRequest() {
 
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(3 * time.Second)
 
 		logger.AsyncInfo("开始同步数据")
-		connection := client.Context.Connection
 
-
-		//writer := bufio.NewWriter(connection)
 
 		//获取数据的请求包
-		synDataPackage := make([]byte, 9)
-		synDataPackage[0] = ACTION_SYNC_DATA
-		synDataPackage[1] = 0
-		synDataPackage[2] = 0
-		synDataPackage[3] = 0
-		synDataPackage[4] = 4
-		//var synDataPackage = [9]byte{ACTION_SYNC_DATA,0,0,0,4}
-		now := time.Now().Unix()
-		binary.LittleEndian.PutUint32(synDataPackage[5:], uint32(now))
+		requestDataPackage := NewBackupPackage(ACTION_SYNC_DATA)
+		requestDataPackage.encodeData(intToBytes(int(time.Now().Unix())))
 
-		logger.AsyncInfo(synDataPackage)
-		//err := binary.Write(connection, binary.BigEndian, synDataPackage)
-		//num, err := writer.Write(synDataPackage)
-		num, err := connection.Write(synDataPackage)
-
-		logger.AsyncInfo(fmt.Sprintf("写入:%#v字节 ,error: %#v", num, err))
-
-		//读数据 start
-		dataPackage := GetDecodedPackageData(connection)
-		logger.AsyncInfo(fmt.Sprintf("返回结果:%#v, length:%d, data:%#v" , dataPackage.ActionType, dataPackage.DataLength, string(dataPackage.Data)))
-
-		//reader := bufio.NewReader(connection)
-		//result,_,err := reader.ReadLine()
-		//logger.AsyncInfo(fmt.Sprintf("返回结果:%#v, error:%#v", result, err))
-		//logger.AsyncInfo(string(result))
-
-		//go func() {
-		//
-		//
-		//}()
-		logger.AsyncInfo("同步数据 end")
-
+		//logger.AsyncInfo(requestDataPackage)
+		num, err := client.Context.writePackage(requestDataPackage)
+		logger.AsyncInfo(fmt.Sprintf("发起数据同步请求:%#v字节 ,error: %#v", num, err))
 	}
 
 }
 
 //发送心跳包
 func (client *Client) sendHeartBeat() {
+
 	for {
-		connection := client.Context.Connection
-		//pingData = make([]byte, 9)
-		//action = G
-		binary.Write(connection, binary.BigEndian, byte(ACTION_PING))
-		binary.Write(connection, binary.BigEndian, int32(4))
-		binary.Write(connection, binary.BigEndian, int32(time.Now().Unix()))
+
+		pingPacakge := NewBackupPackage(ACTION_PING)
+		pingPacakge.encodeData(intToBytes(int(time.Now().Unix())))
+		//binary.Write(connection, binary.BigEndian, byte(ACTION_PING))
+		//binary.Write(connection, binary.BigEndian, int32(4))
+		//binary.Write(connection, binary.BigEndian, int32(time.Now().Unix()))
 		//connection.Write(ACTION_PING)
+
+		num, err := client.Context.writePackage(pingPacakge)
+		logger.AsyncInfo(fmt.Sprintf("heart beat: send beat, %#v, %#v", num, err))
 
 		time.Sleep(5 * time.Second)
 	}
