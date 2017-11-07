@@ -159,7 +159,7 @@ func (this *BoltDbService) IncrSourceCurrentId(source string, currentId int, buc
 func intToBytes(n int) []byte {
     bytesBuffer := bytes.NewBuffer([]byte{})
 	tmp := int64(n)
-    binary.Write(bytesBuffer, binary.BigEndian, tmp)
+    binary.Write(bytesBuffer, binary.LittleEndian, tmp)
     return bytesBuffer.Bytes()
 }
 
@@ -167,6 +167,6 @@ func intToBytes(n int) []byte {
 func bytesToInt(b []byte) int {
     bytesBuffer := bytes.NewBuffer(b)
     var tmp int64
-    binary.Read(bytesBuffer, binary.BigEndian, &tmp)
+    binary.Read(bytesBuffer, binary.LittleEndian, &tmp)
     return int(tmp)
 }

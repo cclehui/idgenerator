@@ -45,8 +45,6 @@ func AsyncDebug(logData interface{}) {
 func AsyncInfo(logData interface{}) {
 	myLogger := GetLogger()
 
-	timeOut := make(chan bool)
-
 	var logStr string
 
 	switch value := logData.(type) {
@@ -56,21 +54,33 @@ func AsyncInfo(logData interface{}) {
 			logStr = fmt.Sprintf("%#v", logData)
 	}
 
-	go func() {
-		select {
-		case myLogger.ChannelInfo <- logStr:
-			return
-		case <-timeOut: //0.5s超时
-			fmt.Println("write log time out")
-			return
-		}
-	}()
+	select {
+	case myLogger.ChannelInfo <- logStr:
+		return
+		//case <-timeOut: //0.5s超时
+	case <- time.After(1000 * time.Millisecond):
+		fmt.Println("write log time out")
+		return
+	}
+
+	//timeOut := make(chan bool)
+
+	//go func() {
+	//	select {
+	//	case myLogger.ChannelInfo <- logStr:
+	//		return
+	//	//case <-timeOut: //0.5s超时
+	//	case <- time.After(1000 * time.Millisecond):
+	//		fmt.Println("write log time out")
+	//		return
+	//	}
+	//}()
 
 	//超时机制
-	go func() {
-		time.Sleep(500 * time.Millisecond)
-		timeOut <- true
-	}()
+	//go func() {
+	//	time.Sleep(500 * time.Millisecond)
+	//	timeOut <- true
+	//}()
 }
 
 //同步写Log

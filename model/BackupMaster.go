@@ -14,7 +14,6 @@ import (
 	"math"
 	"strconv"
 	"sync"
-	//"context"
 	"os"
 	"path"
 )
@@ -33,6 +32,8 @@ type Context struct {
 	Connection net.Conn
 	LastActiveTs int64 //最近一次活跃的时间戳
 	Lock *sync.Mutex
+	Reader *bufio.Reader
+	Writer *bufio.Writer
 }
 
 //往socket中写数据
@@ -45,7 +46,8 @@ func (context *Context) writePackage(dataPackage *BackupPackage) (n int, err err
 
 	context.Lock.Lock()
 
-	writer := bufio.NewWriter(context.Connection)
+	//writer := bufio.NewWriter(context.Connection)
+	writer := context.getWriter()
 	n, err = writer.Write(dataPackage.getHeader())
 	//n, err = context.Connection.Write(dataPackage.getHeader())
 	if err != nil {
@@ -65,6 +67,22 @@ func (context *Context) writePackage(dataPackage *BackupPackage) (n int, err err
 
 func (context *Context) updateAliveTs() {
 	context.LastActiveTs = time.Now().Unix()
+}
+
+func (context *Context) getReader() *bufio.Reader {
+	if context.Reader == nil {
+		context.Reader = bufio.NewReader(context.Connection)
+	}
+
+	return context.Reader
+}
+
+func (context *Context) getWriter() *bufio.Writer {
+	if context.Writer == nil {
+		context.Writer = bufio.NewWriter(context.Connection)
+	}
+
+	return context.Writer
 }
 
 type MasterServer struct{
@@ -102,7 +120,7 @@ func StartMasterServer(serverAddress string) {
 
 		now := time.Now().Unix()
 		lock := new(sync.Mutex)
-		var context = &Context{connection, now, lock}
+		var context = &Context{connection, now, lock,nil,nil}
 
 		logger.AsyncInfo("new connection:" + fmt.Sprintf("%#v", connection))
 
@@ -149,7 +167,7 @@ func (masterServer *MasterServer) handleConnection(context *Context) {
 
 	for {
 
-		dataPackage := GetDecodedPackageData(context.Connection)
+		dataPackage := GetDecodedPackageData(context.getReader(), context.Connection)
 		context.LastActiveTs = time.Now().Unix()
 
 		masterServer.handleAction(context, dataPackage)
@@ -162,7 +180,7 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 		panic("数据包长度少于0")
 	}
 
-	logger.AsyncInfo("MasterServer, handleAction" + fmt.Sprintf("dataPacakge:%#v", dataPacakge))
+	logger.AsyncInfo("开始处理请求" + fmt.Sprintf("dataPacakge:%#v", dataPacakge))
 
 	switch dataPacakge.ActionType {
 	case ACTION_PING:
@@ -180,7 +198,6 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 		srcFile, err := os.Open(GetApplication().ConfigData.Bolt.FilePath)
 		defer srcFile.Close()
 		checkErr(err)
-
 		destFilePath := path.Join(path.Dir(GetApplication().ConfigData.Bolt.FilePath), fmt.Sprintf("%d_%s_%s", os.Getpid(), MyMd5(context.Connection.RemoteAddr()), time.Now().Format("2006010215")))
 		logger.AsyncInfo("临时文件路径:" + destFilePath)
 		destFile, err := os.OpenFile(destFilePath, os.O_WRONLY|os.O_CREATE, 0644)
@@ -193,16 +210,33 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 		//end 复制临时文件
 
 		destFile, err = os.Open(destFilePath)
+		defer destFile.Close()
 		checkErr(err)
 
 		buffer := make([]byte, 1024)
 		var isChunk bool = false
 		var totalBytes int64 = 0;
 
+		for i:=1;i < 3;i++ {
+			dataPackage := NewBackupPackage(ACTION_SYNC_DATA)
+			dataPackage.encodeData([]byte(strconv.Itoa(i)))
+			_, err = context.writePackage(dataPackage)
+			checkErr(err)
+		}
+
 		for {
 			n, err := destFile.Read(buffer)
 			if n <= 0 || (err != nil  && err != io.EOF) {
-				logger.AsyncInfo(fmt.Sprintf("读文件内容异常, %d,  %#v", n, err))
+				if err != io.EOF {
+					logger.AsyncInfo(fmt.Sprintf("读文件内容异常, %d,  %#v", n, err))
+				}
+
+				//同步完成的 tag 包
+				chunkEndPackage := NewBackupPackage(ACTION_CHUNK_END)
+				chunkEndPackage.encodeData([]byte{0x1})
+				_, err = context.writePackage(chunkEndPackage)
+				checkErr(err)
+
 				break
 			}
 
@@ -218,9 +252,10 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 
 			dataPackage.encodeData(buffer[0:n])
 			logger.AsyncInfo(fmt.Sprintf("同步包, action:%#v, length:%d", dataPackage.ActionType, dataPackage.DataLength))
-			if dataPackage.ActionType == ACTION_SYNC_DATA {
-				logger.AsyncInfo(dataPackage)
-			}
+			//logger.AsyncInfo(fmt.Sprintf("同步包, %#v", dataPackage))
+			//if dataPackage.ActionType == ACTION_SYNC_DATA {
+			//	logger.AsyncInfo(dataPackage)
+			//}
 
 			_, err = context.writePackage(dataPackage)
 			checkErr(err)
@@ -239,6 +274,8 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 	default:
 		logger.AsyncInfo("不识别的action")
 	}
+
+	logger.AsyncInfo("end 处理请求")
 
 	return
 }
@@ -363,7 +400,7 @@ func getDataLength(socketio *bufio.ReadWriter) (int, error) {
 		return 0, errors.New("数据长度获取失败")
 	}
 
-	return bytesToInt32(byteSlice), nil
+	return int(bytesToInt32(byteSlice)), nil
 }
 
 //是否是可识别的action
@@ -379,14 +416,14 @@ func isNewAction(action byte) bool {
 func int32ToBytes(n int) []byte {
     bytesBuffer := bytes.NewBuffer([]byte{})
 	tmp := int32(n)
-    binary.Write(bytesBuffer, binary.BigEndian, tmp)
+    binary.Write(bytesBuffer, binary.LittleEndian, tmp)
     return bytesBuffer.Bytes()
 }
 
 //字节转换成整形  
-func bytesToInt32(b []byte) int {
+func bytesToInt32(b []byte) int32 {
     bytesBuffer := bytes.NewBuffer(b)
     var tmp int32
-    binary.Read(bytesBuffer, binary.BigEndian, &tmp)
-    return int(tmp)
+    binary.Read(bytesBuffer, binary.LittleEndian, &tmp)
+    return tmp
 }

@@ -3,12 +3,9 @@ package model
 import (
 	"net"
 	"time"
-	//"encoding/binary"
 	"idGenerator/model/logger"
-	//"strconv"
 	"fmt"
 	"sync"
-	//"bufio"
 	"os"
 )
 
@@ -32,7 +29,7 @@ func StartClientBackUp(masterAddress string) {
 
 	now := time.Now().Unix()
 	lock := new(sync.Mutex)
-	var context = &Context{connection, now,lock}
+	var context = &Context{connection, now,lock,nil,nil}
 
 	if client == nil {
 		client = &Client{context, masterAddress}
@@ -63,6 +60,7 @@ func (client *Client) doAction() {
 
 			if _, ok := err.(*net.OpError); ok {
 				logger.AsyncInfo("重连master")
+				client.Context.Connection.Close()
 				client.reConnect()//尝试重连
 			}
 		}
@@ -77,17 +75,17 @@ func (client *Client) doAction() {
 	var backupDataFile *os.File = nil
 	var err error
 	var totalSize int64 = 0
+	count := 0
 	for {
-		logger.AsyncInfo("开始解包")
-		dataPackage := GetDecodedPackageData(client.Context.Connection)
-		logger.AsyncInfo(fmt.Sprintf("包内容， action:%#v, length:%d", dataPackage.ActionType, dataPackage.DataLength))
-		//logger.AsyncInfo(dataPackage)
+		count++
+
+		dataPackage := GetDecodedPackageData(client.Context.getReader(), client.Context.Connection)
+		logger.AsyncInfo(fmt.Sprintf("开始解包: count:%d, action: %#v, length:%d", count, dataPackage.ActionType, dataPackage.DataLength))
 
 		switch dataPackage.ActionType {
 		case ACTION_PING:
 			logger.AsyncInfo("心跳包返回")
 		case ACTION_SYNC_DATA:
-			logger.AsyncInfo(fmt.Sprintf("上次同步数据 total size: %d", totalSize ))
 
 			backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_CREATE, 0644)
 			defer backupDataFile.Close()
@@ -97,14 +95,12 @@ func (client *Client) doAction() {
 			checkErr(err)
 
 			//重新以append 方式打开文件
-			backupDataFile.Close()
 			backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_APPEND, 0644)
 			defer backupDataFile.Close()
 			checkErr(err)
 
 			totalSize = int64(n)
 
-			//logger.AsyncInfo(fmt.Sprintf("解包结果:%#v, length:%d, data:%#v", dataPackage.ActionType, dataPackage.DataLength, string(dataPackage.Data)))
 		case ACTION_CHUNK_DATA:
 			if backupDataFile != nil {
 				n, err := backupDataFile.Write(dataPackage.Data)
@@ -112,12 +108,15 @@ func (client *Client) doAction() {
 
 				totalSize += int64(n)
 			}
+		case ACTION_CHUNK_END:
+			logger.AsyncInfo(fmt.Sprintf("同步完成， 共同步数据 : %d bytes", totalSize ))
+			backupDataFile.Close()
 
 		default:
 			logger.AsyncInfo(fmt.Sprintf("未识别的包, %#v", dataPackage))
 		}
 
-		logger.AsyncInfo("end 解包 xxxx")
+		logger.AsyncInfo("end 解包 ")
 	}
 }
 

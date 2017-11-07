@@ -6,7 +6,8 @@ import (
 	"bufio"
 	"fmt"
 
-	"encoding/binary"
+	"math"
+	"io"
 )
 
 const (
@@ -15,6 +16,8 @@ const (
 	ACTION_PING byte = 0x01
 	ACTION_SYNC_DATA byte = 0x02 //同步数据
 	ACTION_CHUNK_DATA byte = 0x03 //同步数据，块数据
+	ACTION_CHUNK_END byte = 0x04 //同步数据完成的标识
+
 
 	DATA_LEGTH_TAG = 4
 
@@ -50,8 +53,8 @@ func (backupPackage *BackupPackage) getHeader() []byte {
 	return result
 }
 
-func GetDecodedPackageData(conn net.Conn) *BackupPackage {
-	reader := bufio.NewReader(conn)
+func GetDecodedPackageData(reader *bufio.Reader, conn net.Conn) *BackupPackage {
+	//reader := bufio.NewReader(conn)
 
 	packageData := new(BackupPackage)
 
@@ -62,24 +65,39 @@ func GetDecodedPackageData(conn net.Conn) *BackupPackage {
 
 	packageData.ActionType = actionType
 
-	//tempBuffer := make([]byte, DATA_LEGTH_TAG)
-	//n, err := reader.Read(tempBuffer)
-	//packageData.DataLength = int32(bytesToInt(tempBuffer))
+	tempBuffer := make([]byte, DATA_LEGTH_TAG)
+	n, err := reader.Read(tempBuffer)
+	packageData.DataLength = bytesToInt32(tempBuffer)
 
-	err = binary.Read(reader, binary.BigEndian, &packageData.DataLength)
+	//err = binary.Read(reader, binary.LittleEndian, &packageData.DataLength)
 	if err != nil {
 		checkErr(fmt.Sprintf("获取包长度异常: err:%#v", err))
 	}
 
 	//logger.AsyncInfo(fmt.Sprintf("length:%#v", packageData.DataLength))
 
-	packageData.Data = make([]byte, packageData.DataLength)
+	//packageData.Data = make([]byte, packageData.DataLength)
+	leftSize := packageData.DataLength
 
-	n, err := reader.Read(packageData.Data)
+	for {
+		buffer := make([]byte, int(math.Min(1024, float64(leftSize))))
 
-	if n < int(packageData.DataLength) || err != nil {
-		checkErr(fmt.Sprintf("获取数据异常:n:%#v, err:%#v", n, err))
+		n, err = reader.Read(buffer)
+		if err != nil && err != io.EOF {
+			checkErr(fmt.Sprintf("获取数据异常:n:%#v , packge length:%d, err:%#v", n, packageData.DataLength, err))
+		}
+
+		packageData.Data = append(packageData.Data, buffer[0:n]...)
+
+		leftSize = leftSize - int32(n)
+		if leftSize <= 0 {
+			break
+		}
 	}
+	//n, err = reader.Read(packageData.Data)
+
+
+	//logger.AsyncInfo(fmt.Sprintf("包数据: %#v, %#v, length:%d, %#v", actionType, 11111,packageData.DataLength, packageData.Data))
 
 	return packageData
 }

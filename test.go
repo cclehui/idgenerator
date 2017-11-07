@@ -5,18 +5,14 @@ package main
 import(
 	"fmt"
     "os"
-	//"encoding/binary"
-	//"time"
 	"encoding/binary"
 	"bytes"
-	//"idGenerator/model"
-	//"reflect"
 )
 
 func bytesToInt32(b []byte) int32 {
 	bytesBuffer := bytes.NewBuffer(b)
 	var tmp int32
-	binary.Read(bytesBuffer, binary.BigEndian, &tmp)
+	binary.Read(bytesBuffer, binary.LittleEndian, &tmp)
 	return int32(tmp)
 }
 
@@ -27,15 +23,13 @@ func bytesToInt32(b []byte) int32 {
 
 func main() {
 
+	data := []byte{0x0,0x4,0x0,0x0}
 
+	fmt.Printf("%d\n", bytesToInt32(data))
 
-	temp := make([]byte, 2);
-	temp = append(temp, 0x2)
-
-
-	temp = []byte{0x0, 0x0, 0x1, 0x2e};
+	temp := []byte{0x0, 0x0, 0x1, 0x2e};
 	//length := bytesToInt32(temp)
-	fmt.Printf("%#v, %#v", temp, temp[0:2])
+	fmt.Printf("%#v, %#v\n", temp, temp[0:2])
 
 	//fmt.Printf("aaa:%#v", reflect.TypeOf(model.ACTION_SYNC_DATA).Name())
 	os.Exit(0)
