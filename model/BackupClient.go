@@ -68,8 +68,11 @@ func (client *Client) doAction() {
 
 	//go client.sendHeartBeat()
 
+	syncDataMsgChan := make(chan bool)
 	//发送数据备份的请求
-	go client.sendSyncDatabaseRequest()
+	go client.sendSyncDatabaseRequest(syncDataMsgChan)
+
+	syncDataMsgChan <- true
 
 	//读数据
 	var backupDataFile *os.File = nil
@@ -87,16 +90,21 @@ func (client *Client) doAction() {
 			logger.AsyncInfo("心跳包返回")
 		case ACTION_SYNC_DATA:
 
+			//err = os.Remove(GetApplication().ConfigData.Bolt.FilePath)
+			//checkErr(err)
+
+			// 重复写入一个文件 xxxxxxxxxxxxxx  cclehui_todo
+
 			backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_CREATE, 0644)
-			defer backupDataFile.Close()
 			checkErr(err)
 
 			n, err := backupDataFile.Write(dataPackage.Data)
 			checkErr(err)
+			backupDataFile.Close()
 
 			//重新以append 方式打开文件
 			backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_APPEND, 0644)
-			defer backupDataFile.Close()
+			//defer backupDataFile.Close()
 			checkErr(err)
 
 			totalSize = int64(n)
@@ -111,6 +119,7 @@ func (client *Client) doAction() {
 		case ACTION_CHUNK_END:
 			logger.AsyncInfo(fmt.Sprintf("同步完成， 共同步数据 : %d bytes", totalSize ))
 			backupDataFile.Close()
+			syncDataMsgChan <- true //启动重新同步
 
 		default:
 			logger.AsyncInfo(fmt.Sprintf("未识别的包, %#v", dataPackage))
@@ -133,10 +142,10 @@ func (client *Client) reConnect() {
 }
 
 //发送备份数据仓库的reqeust
-func (client *Client) sendSyncDatabaseRequest() {
+func (client *Client) sendSyncDatabaseRequest(msgChan chan bool) {
 
-	//for {
-		//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx , 上一次的没同步完成， 这里有重发请求了 ！！！！！
+	for {
+		<- msgChan  //等待同步消息启动
 		time.Sleep(6 * time.Second)
 
 		//获取数据的请求包
@@ -146,7 +155,7 @@ func (client *Client) sendSyncDatabaseRequest() {
 		//logger.AsyncInfo(requestDataPackage)
 		num, err := client.Context.writePackage(requestDataPackage)
 		logger.AsyncInfo(fmt.Sprintf("发起数据同步请求:%#v字节 ,error: %#v", num, err))
-	//}
+	}
 
 }
 

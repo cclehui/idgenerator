@@ -217,12 +217,12 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 		var isChunk bool = false
 		var totalBytes int64 = 0;
 
-		for i:=1;i < 3;i++ {
-			dataPackage := NewBackupPackage(ACTION_SYNC_DATA)
-			dataPackage.encodeData([]byte(strconv.Itoa(i)))
-			_, err = context.writePackage(dataPackage)
-			checkErr(err)
-		}
+		//for i:=1;i < 3;i++ {
+		//	dataPackage := NewBackupPackage(ACTION_SYNC_DATA)
+		//	dataPackage.encodeData([]byte(strconv.Itoa(i)))
+		//	_, err = context.writePackage(dataPackage)
+		//	checkErr(err)
+		//}
 
 		for {
 			n, err := destFile.Read(buffer)
