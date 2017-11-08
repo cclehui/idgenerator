@@ -16,6 +16,8 @@ import (
 	"sync"
 	"os"
 	"path"
+	"encoding/json"
+	"strings"
 )
 
 //var	contextList *list.List
@@ -192,7 +194,20 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 		break
 
 	case ACTION_SYNC_DATA:
+
+		var slaveFileInfo map[string]string
+		json.Unmarshal(dataPacakge.Data, &slaveFileInfo)
+
+		caculatedMd5 := CaculteFileMd5(GetApplication().ConfigData.Bolt.FilePath)
+
+		if strings.Compare(slaveFileInfo["md5"],caculatedMd5) == 0 {
+			logger.AsyncInfo("数据无修改，无需备份\t" + time.Now().Format(TIME_FORMAT) )
+			break
+		}
+
 		logger.AsyncInfo("开始备份数据\t" + time.Now().Format(TIME_FORMAT) )
+		//logger.AsyncInfo(slaveFileInfo)
+		//logger.AsyncInfo("master md5值:\t" + caculatedMd5)
 
 		// start 复制临时文件
 		srcFile, err := os.Open(GetApplication().ConfigData.Bolt.FilePath)

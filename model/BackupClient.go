@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sync"
 	"os"
+	"encoding/json"
 )
 
 //var	contextList *list.List
@@ -147,9 +148,16 @@ func (client *Client) sendSyncDatabaseRequest(msgChan chan bool) {
 		<- msgChan  //等待同步消息启动
 		time.Sleep(10 * time.Second)
 
+		data := make(map[string]string)
+		data["md5"] = CaculteFileMd5(GetApplication().ConfigData.Bolt.FilePath)
+		data["ts"] = time.Now().Format(TIME_FORMAT)
+
+		encodedData, _ := json.Marshal(data)
+
 		//获取数据的请求包
 		requestDataPackage := NewBackupPackage(ACTION_SYNC_DATA)
-		requestDataPackage.encodeData(intToBytes(int(time.Now().Unix())))
+		//requestDataPackage.encodeData(intToBytes(int(time.Now().Unix())))
+		requestDataPackage.encodeData(encodedData)
 
 		//logger.AsyncInfo(requestDataPackage)
 		num, err := client.Context.writePackage(requestDataPackage)

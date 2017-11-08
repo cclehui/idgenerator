@@ -6,6 +6,10 @@ import(
     "os"
 	"encoding/binary"
 	"bytes"
+	"time"
+	"encoding/json"
+	"idGenerator/model"
+	"fmt"
 )
 
 func bytesToInt32(b []byte) int32 {
@@ -29,28 +33,31 @@ func CheckErr(err interface{}) {
 
 func main() {
 
-	filePath := "./data/temp.log"
+	data := make(map[string]string)
+	data["md5"] = model.CaculteFileMd5("./data/bolt_kv.db.backup")
+	data["ts"] = time.Now().Format(model.TIME_FORMAT)
 
-	backupDataFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0644)
-	CheckErr(err)
+	encodedData, _ := json.Marshal(data)
 
-	backupDataFile.Truncate(0)
-	CheckErr(err)
+	var decodeData map[string]string
 
-	data := []byte("xxxxxxxxxxxxxxx\n")
+	json.Unmarshal(encodedData, &decodeData)
 
-	_, err = backupDataFile.Write(data)
-	CheckErr(err)
-	//backupDataFile.Close()
+	fmt.Println(data)
+	fmt.Println(decodeData)
+	fmt.Println(decodeData["md5"])
 
+	if decodeData["md5"] == "d41d8cd98f00b204e9800998ecf8427e" {
+		fmt.Println("xxxxxxxxxxxxxxx")
+	}
 	//重新以append 方式打开文件
 	//backupDataFile, err = os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)
 	//defer backupDataFile.Close()
 	//CheckErr(err)
 
-	data = []byte("yyyyyyyyyyyyyyyyyyy\n")
-
-	backupDataFile.Write(data)
+	//data = []byte("yyyyyyyyyyyyyyyyyyy\n")
+	//
+	//backupDataFile.Write(data)
 
 	//data := []byte{0x0,0x4,0x0,0x0}
 	//
