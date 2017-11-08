@@ -7,7 +7,6 @@ import(
 	"encoding/binary"
 	"bytes"
 	"time"
-	"encoding/json"
 	"idGenerator/model"
 	"fmt"
 )
@@ -36,20 +35,23 @@ func main() {
 	data := make(map[string]string)
 	data["md5"] = model.CaculteFileMd5("./data/bolt_kv.db.backup")
 	data["ts"] = time.Now().Format(model.TIME_FORMAT)
-
-	encodedData, _ := json.Marshal(data)
-
-	var decodeData map[string]string
-
-	json.Unmarshal(encodedData, &decodeData)
+	data["xxx"] = model.CaculteFileMd5("./data/bolt_kv.db.lock")
 
 	fmt.Println(data)
-	fmt.Println(decodeData)
-	fmt.Println(decodeData["md5"])
 
-	if decodeData["md5"] == "d41d8cd98f00b204e9800998ecf8427e" {
-		fmt.Println("xxxxxxxxxxxxxxx")
-	}
+	//encodedData, _ := json.Marshal(data)
+	//
+	//var decodeData map[string]string
+	//
+	//json.Unmarshal(encodedData, &decodeData)
+	//
+	//fmt.Println(data)
+	//fmt.Println(decodeData)
+	//fmt.Println(decodeData["md5"])
+	//
+	//if decodeData["md5"] == "d41d8cd98f00b204e9800998ecf8427e" {
+	//	fmt.Println("xxxxxxxxxxxxxxx")
+	//}
 	//重新以append 方式打开文件
 	//backupDataFile, err = os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)
 	//defer backupDataFile.Close()

@@ -26,8 +26,10 @@ func CaculteFileMd5(filePath string) string {
 
 	md5Hash := md5.New()
 
-	io.Copy(md5Hash, file)
+	// cclehui_todo 这里有问题需要改
+	_ ,err = io.Copy(md5Hash, file)
 
+	//result := fmt.Sprintf("xxx%d, error:%#v, %x",n, err, md5.Sum(nil))
 	result := fmt.Sprintf("%x", md5.Sum(nil))
 
 	return result

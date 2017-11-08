@@ -84,11 +84,11 @@ func (client *Client) doAction() {
 		count++
 
 		dataPackage := GetDecodedPackageData(client.Context.getReader(), client.Context.Connection)
-		logger.AsyncInfo(fmt.Sprintf("开始解包: count:%d, action: %#v, length:%d", count, dataPackage.ActionType, dataPackage.DataLength))
+		//logger.AsyncInfo(fmt.Sprintf("开始解包: count:%d, action: %#v, length:%d", count, dataPackage.ActionType, dataPackage.DataLength))
 
 		switch dataPackage.ActionType {
 		case ACTION_PING:
-			logger.AsyncInfo("心跳包返回")
+			//logger.AsyncInfo("心跳包返回")
 		case ACTION_SYNC_DATA:
 			// 重复写入一个文件 xxxxxxxxxxxxxx  cclehui_todo
 
@@ -117,15 +117,17 @@ func (client *Client) doAction() {
 				totalSize += int64(n)
 			}
 		case ACTION_CHUNK_END:
-			logger.AsyncInfo(fmt.Sprintf("同步完成， 共同步数据 : %d bytes", totalSize ))
-			backupDataFile.Close()
+			if backupDataFile != nil {
+				logger.AsyncInfo(fmt.Sprintf("同步完成， 共同步数据 : %d bytes", totalSize))
+				backupDataFile.Close()
+			}
 			syncDataMsgChan <- true //启动重新同步
 
 		default:
 			logger.AsyncInfo(fmt.Sprintf("未识别的包, %#v", dataPackage))
 		}
 
-		logger.AsyncInfo("end 解包 ")
+		//logger.AsyncInfo("end 解包 ")
 	}
 }
 
@@ -146,7 +148,7 @@ func (client *Client) sendSyncDatabaseRequest(msgChan chan bool) {
 
 	for {
 		<- msgChan  //等待同步消息启动
-		time.Sleep(10 * time.Second)
+		time.Sleep(2 * time.Second)
 
 		data := make(map[string]string)
 		data["md5"] = CaculteFileMd5(GetApplication().ConfigData.Bolt.FilePath)

@@ -182,14 +182,16 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 		panic("数据包长度少于0")
 	}
 
-	logger.AsyncInfo("开始处理请求" + fmt.Sprintf("dataPacakge:%#v", dataPacakge))
+	//logger.AsyncInfo("开始处理请求" + fmt.Sprintf("dataPacakge:%#v", dataPacakge))
+
+	var sendChunkEnd bool = false
 
 	switch dataPacakge.ActionType {
 	case ACTION_PING:
 		dataPackage  := NewBackupPackage(ACTION_PING)
 		dataPackage.encodeData(int32ToBytes(int(context.LastActiveTs)))
-		n, err :=context.writePackage(dataPackage)
-		logger.AsyncInfo(fmt.Sprintf("心跳包: %#v, %#v", n, err))
+		_, err :=context.writePackage(dataPackage)
+		//logger.AsyncInfo(fmt.Sprintf("心跳包: %#v, %#v", n, err))
 		checkErr(err)
 		break
 
@@ -202,6 +204,7 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 
 		if strings.Compare(slaveFileInfo["md5"],caculatedMd5) == 0 {
 			logger.AsyncInfo("数据无修改，无需备份\t" + time.Now().Format(TIME_FORMAT) )
+			sendChunkEnd = true
 			break
 		}
 
@@ -246,11 +249,9 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 					logger.AsyncInfo(fmt.Sprintf("读文件内容异常, %d,  %#v", n, err))
 				}
 
-				//同步完成的 tag 包
-				chunkEndPackage := NewBackupPackage(ACTION_CHUNK_END)
-				chunkEndPackage.encodeData([]byte{0x1})
-				_, err = context.writePackage(chunkEndPackage)
-				checkErr(err)
+				sendChunkEnd = true
+
+
 
 				break
 			}
@@ -290,7 +291,15 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 		logger.AsyncInfo("不识别的action")
 	}
 
-	logger.AsyncInfo("end 处理请求")
+	if sendChunkEnd {
+		//同步完成的 tag 包
+		chunkEndPackage := NewBackupPackage(ACTION_CHUNK_END)
+		chunkEndPackage.encodeData([]byte{0x1})
+		_, err := context.writePackage(chunkEndPackage)
+		checkErr(err)
+	}
+
+	//logger.AsyncInfo("end 处理请求")
 
 	return
 }
