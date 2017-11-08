@@ -66,7 +66,7 @@ func (client *Client) doAction() {
 		}
 	}()
 
-	//go client.sendHeartBeat()
+	go client.sendHeartBeat()
 
 	syncDataMsgChan := make(chan bool)
 	//发送数据备份的请求
@@ -89,23 +89,22 @@ func (client *Client) doAction() {
 		case ACTION_PING:
 			logger.AsyncInfo("心跳包返回")
 		case ACTION_SYNC_DATA:
-
-			//err = os.Remove(GetApplication().ConfigData.Bolt.FilePath)
-			//checkErr(err)
-
 			// 重复写入一个文件 xxxxxxxxxxxxxx  cclehui_todo
 
 			backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_CREATE, 0644)
 			checkErr(err)
 
+			err = backupDataFile.Truncate(0)
+			checkErr(err)
+
 			n, err := backupDataFile.Write(dataPackage.Data)
 			checkErr(err)
-			backupDataFile.Close()
+			//backupDataFile.Close()
 
 			//重新以append 方式打开文件
-			backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_APPEND, 0644)
+			//backupDataFile, err = os.OpenFile(GetApplication().ConfigData.Bolt.FilePath, os.O_WRONLY|os.O_APPEND, 0644)
 			//defer backupDataFile.Close()
-			checkErr(err)
+			//checkErr(err)
 
 			totalSize = int64(n)
 
@@ -146,7 +145,7 @@ func (client *Client) sendSyncDatabaseRequest(msgChan chan bool) {
 
 	for {
 		<- msgChan  //等待同步消息启动
-		time.Sleep(6 * time.Second)
+		time.Sleep(10 * time.Second)
 
 		//获取数据的请求包
 		requestDataPackage := NewBackupPackage(ACTION_SYNC_DATA)

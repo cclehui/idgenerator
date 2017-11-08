@@ -187,7 +187,7 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 		dataPackage  := NewBackupPackage(ACTION_PING)
 		dataPackage.encodeData(int32ToBytes(int(context.LastActiveTs)))
 		n, err :=context.writePackage(dataPackage)
-		logger.AsyncInfo(fmt.Sprintf("心跳包: %#v, $#v", n, err))
+		logger.AsyncInfo(fmt.Sprintf("心跳包: %#v, %#v", n, err))
 		checkErr(err)
 		break
 

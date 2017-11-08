@@ -3,7 +3,6 @@ package main
 //import  idGenerator "idGenerator/model"
 
 import(
-	"fmt"
     "os"
 	"encoding/binary"
 	"bytes"
@@ -16,6 +15,13 @@ func bytesToInt32(b []byte) int32 {
 	return int32(tmp)
 }
 
+func CheckErr(err interface{}) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+
 
 //每个业务对应一个 key 全局唯一
 //var idWorkerMap = make(map[int]*idGenerator.IdWorker)
@@ -23,13 +29,36 @@ func bytesToInt32(b []byte) int32 {
 
 func main() {
 
-	data := []byte{0x0,0x4,0x0,0x0}
+	filePath := "./data/temp.log"
 
-	fmt.Printf("%d\n", bytesToInt32(data))
+	backupDataFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0644)
+	CheckErr(err)
 
-	temp := []byte{0x0, 0x0, 0x1, 0x2e};
-	//length := bytesToInt32(temp)
-	fmt.Printf("%#v, %#v\n", temp, temp[0:2])
+	backupDataFile.Truncate(0)
+	CheckErr(err)
+
+	data := []byte("xxxxxxxxxxxxxxx\n")
+
+	_, err = backupDataFile.Write(data)
+	CheckErr(err)
+	//backupDataFile.Close()
+
+	//重新以append 方式打开文件
+	//backupDataFile, err = os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)
+	//defer backupDataFile.Close()
+	//CheckErr(err)
+
+	data = []byte("yyyyyyyyyyyyyyyyyyy\n")
+
+	backupDataFile.Write(data)
+
+	//data := []byte{0x0,0x4,0x0,0x0}
+	//
+	//fmt.Printf("%d\n", bytesToInt32(data))
+	//
+	//temp := []byte{0x0, 0x0, 0x1, 0x2e};
+	////length := bytesToInt32(temp)
+	//fmt.Printf("%#v, %#v\n", temp, temp[0:2])
 
 	//fmt.Printf("aaa:%#v", reflect.TypeOf(model.ACTION_SYNC_DATA).Name())
 	os.Exit(0)
