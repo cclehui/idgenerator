@@ -35,7 +35,7 @@ func main() {
 	data := make(map[string]string)
 	data["md5"] = model.CaculteFileMd5("./data/bolt_kv.db.backup")
 	data["ts"] = time.Now().Format(model.TIME_FORMAT)
-	data["xxx"] = model.CaculteFileMd5("./data/bolt_kv.db.lock")
+	data["xxx"] = model.CaculteFileMd5("./README.md")
 
 	fmt.Println(data)
 

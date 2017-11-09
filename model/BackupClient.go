@@ -120,6 +120,7 @@ func (client *Client) doAction() {
 			if backupDataFile != nil {
 				logger.AsyncInfo(fmt.Sprintf("同步完成， 共同步数据 : %d bytes", totalSize))
 				backupDataFile.Close()
+				totalSize = 0
 			}
 			syncDataMsgChan <- true //启动重新同步
 
