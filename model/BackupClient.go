@@ -37,36 +37,42 @@ func StartClientBackUp(masterAddress string) {
 	}
 
 	//备份数据库
-	go func() {
-		for {
+	channelRedo := make(chan bool)
+	for {
+		go func() {
+			defer func() {
+				err := recover()
+				logger.AsyncInfo(fmt.Sprintf("主从同步异常, %#v", err))
+
+				channelRedo <- true
+			}()
+
 			logger.AsyncInfo("启动主从同步操作")
 			client.doAction()
 
-			time.Sleep(2 * time.Second)
-		}
-	}()
+
+
+		}()
+		<- channelRedo
+		time.Sleep(2 * time.Second)
+	}
 }
 
 func (client *Client) doAction() {
 	defer func() {
 		err := recover()
-		logger.AsyncInfo("重连master 异常捕获")
-		logger.AsyncInfo(err)
-	}()
-
-	defer func() {
-		err := recover()
 		if err != nil {
-			logger.AsyncInfo(err)
+			logger.AsyncInfo(fmt.Sprintf("doAction error : %#v",err))
 
 			if _, ok := err.(*net.OpError); ok {
-				logger.AsyncInfo("重连master")
-				client.Context.Connection.Close()
+				err = client.Context.Connection.Close()
+				logger.AsyncInfo(fmt.Sprintf("重连master : %#v",err))
 				client.reConnect()//尝试重连
 			}
 		}
 	}()
 
+	//发送心跳包
 	go client.sendHeartBeat()
 
 	syncDataMsgChan := make(chan bool)
@@ -140,12 +146,19 @@ func (client *Client) reConnect() {
 	connection, err := net.Dial("tcp", client.MasterAddress)
 	CheckErr(err)
 
-	client.Context.Connection = connection
-	client.Context.LastActiveTs = time.Now().Unix()
+	now := time.Now().Unix()
+	lock := new(sync.Mutex)
+	var context = &Context{connection, now,lock,nil,nil}
+
+	client.Context = context
 }
 
 //发送备份数据仓库的reqeust
 func (client *Client) sendSyncDatabaseRequest(msgChan chan bool) {
+	defer func() {
+		err := recover()
+		logger.AsyncInfo(fmt.Sprintf("sendSyncDatabaseRequest error : %#v",err))
+	}()
 
 	for {
 		<- msgChan  //等待同步消息启动
@@ -171,6 +184,10 @@ func (client *Client) sendSyncDatabaseRequest(msgChan chan bool) {
 
 //发送心跳包
 func (client *Client) sendHeartBeat() {
+	defer func() {
+		err := recover()
+		logger.AsyncInfo(fmt.Sprintf("sendHeartBeat error : %#v",err))
+	}()
 
 	for {
 
@@ -183,6 +200,7 @@ func (client *Client) sendHeartBeat() {
 
 		num, err := client.Context.writePackage(pingPacakge)
 		logger.AsyncInfo(fmt.Sprintf("发起心跳包: send beat, %#v, %#v", num, err))
+		checkErr(err)
 
 		time.Sleep(5 * time.Second)
 	}

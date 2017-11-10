@@ -9,6 +9,8 @@ import(
 	"time"
 	"idGenerator/model"
 	"fmt"
+	"idGenerator/model/logger"
+	"strconv"
 )
 
 func bytesToInt32(b []byte) int32 {
@@ -24,6 +26,21 @@ func CheckErr(err interface{}) {
 	}
 }
 
+func doAction() {
+
+	go func() {
+		defer func() {
+
+			err := recover()
+			logger.AsyncInfo(fmt.Sprintf("self function , %#v", err))
+		}()
+		time.Sleep(4 * time.Second)
+		panic("异常222222222222222")
+	}()
+
+	panic("异常111111111111：" + strconv.Itoa(int(time.Now().Unix())))
+}
+
 
 
 //每个业务对应一个 key 全局唯一
@@ -31,6 +48,32 @@ func CheckErr(err interface{}) {
 //var idWorkerMap = cmap.New();
 
 func main() {
+
+
+	channelRedo := make(chan bool)
+	for {
+		defer func() {
+			err := recover()
+			logger.AsyncInfo(fmt.Sprintf("for xdddddddddddd, %#v", err))
+		}()
+
+		go func() {
+			defer func() {
+				err := recover()
+				logger.AsyncInfo(fmt.Sprintf("主从同步异常, %#v", err))
+
+				channelRedo <- true
+			}()
+
+			logger.AsyncInfo("启动主从同步操作")
+			doAction()
+
+
+
+		}()
+		<- channelRedo
+		time.Sleep(2 * time.Second)
+	}
 
 	data := make(map[string]string)
 	data["md5"] = model.CaculteFileMd5("./data/bolt_kv.db.backup")
