@@ -29,18 +29,6 @@ func main() {
 	configLog := fmt.Sprintf("loaded config %#v\napplication base_path:%s", application.ConfigData, application.BasePath)
 	logger.AsyncInfo(configLog)
 
-	//srcFile, err := os.Open(application.ConfigData.Bolt.FilePath)
-	//defer srcFile.Close()
-	//model.CheckErr(err)
-	//
-	//destFilePath := path.Join(path.Dir(application.ConfigData.Bolt.FilePath), fmt.Sprintf("%d_%s", os.Getpid(), time.Now().Format("2006010215")))
-	//destFile, err := os.OpenFile(destFilePath, os.O_WRONLY|os.O_CREATE, 0644)
-	//model.CheckErr(err)
-	//
-	//io.Copy(destFile, srcFile)
-	//
-	//os.Exit(0)
-
 	port := "8182"
 
 	//启动数据备份server
