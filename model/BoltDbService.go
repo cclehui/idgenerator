@@ -155,6 +155,10 @@ func (this *BoltDbService) IncrSourceCurrentId(source string, currentId int, buc
 	return resultCurrentId, newDbCurrentId
 }
 
+func (this *BoltDbService) CallFuncFromMaster() {
+	
+}
+
 //整形转换成字节  
 func intToBytes(n int) []byte {
     bytesBuffer := bytes.NewBuffer([]byte{})
