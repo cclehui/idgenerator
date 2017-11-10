@@ -35,15 +35,20 @@ func main() {
 	flag.Parse()
 	serverInstancType := flag.Arg(0)
 	switch serverInstancType {
-		case "master":
+		case model.SERVER_MASTER:
 			logger.AsyncInfo("启动备份server端程序")
 			application.StartDataBackUpServer()
 
-		case "slave":
-			logger.AsyncInfo("启动备份slave端程序")
+		case model.SERVER_SLAVE:
+
 			port = "8183"
+			application.ConfigData.ServerType = model.SERVER_SLAVE
+
+			logger.AsyncInfo("启动slave端数据备份程序")
 			application.ConfigData.Bolt.FilePath +=  ".backup"
 			application.StartDataBackUpClient()
+
+			logger.AsyncInfo("启动slave server数据通道")
 
 		default:
 			logger.AsyncInfo("输入参数:" + serverInstancType)

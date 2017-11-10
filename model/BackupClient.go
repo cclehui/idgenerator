@@ -17,10 +17,10 @@ type Client struct {
 	MasterAddress string
 }
 
-var client *Client
+//var client *Client
 
-//启动client 备份
-func StartClientBackUp(masterAddress string) {
+//获取新连接
+func NewClient(masterAddress string) *Client {
 	tcpAddress, err := net.ResolveTCPAddr("tcp", masterAddress)
 	CheckErr(err)
 
@@ -32,10 +32,14 @@ func StartClientBackUp(masterAddress string) {
 	lock := new(sync.Mutex)
 	var context = &Context{connection, now,lock,nil,nil}
 
-	if client == nil {
-		client = &Client{context, masterAddress}
-	}
+	client := &Client{context, masterAddress}
 
+	return client
+
+}
+
+//启动client 备份
+func StartClientBackUp(client *Client)  {
 	//备份数据库
 	channelRedo := make(chan bool)
 	for {
@@ -179,7 +183,6 @@ func (client *Client) sendSyncDatabaseRequest(msgChan chan bool) {
 		num, err := client.Context.writePackage(requestDataPackage)
 		logger.AsyncInfo(fmt.Sprintf("发起数据同步请求:%#v字节 ,error: %#v", num, err))
 	}
-
 }
 
 //发送心跳包

@@ -12,11 +12,17 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+const (
+	SERVER_MASTER = "master"
+	SERVER_SLAVE = "slave"
+)
+
 type Application struct {
 	IdWorkerMap cmap.ConcurrentMap // 应用的处理worker
 	ConfigData  config.Config      //配置信息
 	ConfigFileInfo os.FileInfo     //配置文件的文件信息
 	BasePath string //应用根目录
+	SocketClient *Client
 }
 
 var application *Application
@@ -112,9 +118,21 @@ func (application *Application) StartDataBackUpServer() {
 
 //启动数据备份client
 func (application *Application) StartDataBackUpClient() {
+	defer func() {
+		err := recover()
+
+		logger.AsyncInfo(fmt.Sprintf("连接master 异常, %#v", err))
+		if err != nil {
+			panic(err)
+		}
+
+	}()
+
+	//获取连接
+	client := NewClient(application.ConfigData.MasterAddress)
 
 	go func() {
-		StartClientBackUp(application.ConfigData.MasterAddress)
+		StartClientBackUp(client)
 	}()
 }
 
@@ -156,3 +174,6 @@ func (application *Application) GetIdWorkerMap() cmap.ConcurrentMap {
 
 	return applicationInstance.IdWorkerMap
 }
+
+
+
