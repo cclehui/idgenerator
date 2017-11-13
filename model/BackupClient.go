@@ -39,7 +39,7 @@ func NewClient(masterAddress string) *Client {
 }
 
 //启动client 备份
-func StartClientBackUp(client *Client)  {
+func (client *Client) StartClientBackUp()  {
 	//备份数据库
 	channelRedo := make(chan bool)
 	for {

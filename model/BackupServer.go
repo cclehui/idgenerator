@@ -18,6 +18,7 @@ import (
 	"path"
 	"encoding/json"
 	"strings"
+	"net/rpc"
 )
 
 //var	contextList *list.List
@@ -28,32 +29,67 @@ const (
 	STATUS_FINISH = 0xFF
 
 	TIME_FORMAT = "2006-01-02 15:04:05"
+
+	//server 类型
+	SERVER_TYPE_DATA_BACKUP = 1 //数据备份server
+	SERVER_TYPE_RPC = 2 //rcp server
+
+	//server 的状态
+	SERVER_STATUS_ALIVE int8 = 1
+	SERVER_STATUS_DEAD int8 = 9
 )
 
 type MasterServer struct{
 	ContextList *list.List
+	ServerAddress string
+	ServerType int
+	ServerStatus int8
+	WaitGroup sync.WaitGroup
+	NetListener net.Listener
 }
 
-var masterServer *MasterServer
+//var masterServer *MasterServer
+
+func NewServer(serverAddress string, serverType int) *MasterServer {
+
+	switch serverType {
+	case SERVER_TYPE_DATA_BACKUP, SERVER_TYPE_RPC:
+	default:
+		panic("不识别的server type")
+	}
+
+	var wg sync.WaitGroup
+
+	masterServer := &MasterServer{list.New(), serverAddress, serverType, SERVER_STATUS_ALIVE, wg, nil}
+
+	return masterServer
+}
+
+func (masterServer *MasterServer) ToString() string {
+	return fmt.Sprintf("server, address:%s, serverType:%d, serverStatus:%d", masterServer.ServerAddress, masterServer.ServerType, masterServer.ServerStatus)
+}
+
 //启动master server
-func StartMasterServer(serverAddress string) {
+func (masterServer *MasterServer) StartMasterServer() {
+
+	serverAddress := masterServer.ServerAddress
+
 	_, err := net.ResolveTCPAddr("tcp", serverAddress)
 	CheckErr(err)
 
 	listener, err := net.Listen("tcp", serverAddress)
 	CheckErr(err)
 
+
 	defer func() {
+		masterServer.ServerStatus = SERVER_STATUS_DEAD //server 挂了
 		listener.Close()
+		//这里没有 recover
 	}()
 
-	logger.AsyncInfo("start master server on :" + serverAddress)
+	logger.AsyncInfo(fmt.Sprintf("start master server:%s" , masterServer.ToString()))
 
-	if masterServer == nil {
-		masterServer = &MasterServer{list.New()}
-	}
-
-	// 开启一个子 grountine 来遍历 contextList cclehui_todo
+	// 开启一个子 grountine 来遍历 contextList
 	go masterServer.doConnectionAliveCheck()
 
 	for {
@@ -63,17 +99,67 @@ func StartMasterServer(serverAddress string) {
 			continue
 		}
 
+		if masterServer.isDead() {
+			break
+		}
+
 		now := time.Now().Unix()
 		lock := new(sync.Mutex)
 		var context = &Context{connection, now, lock,nil,nil}
 
-		logger.AsyncInfo("new connection:" + fmt.Sprintf("%#v", connection))
+		logger.AsyncInfo(fmt.Sprintf("new connection: %#v", connection))
 
 		masterServer.ContextList.PushBack(context) //放入全局context list中
 
-		go masterServer.handleConnection(context)
+		switch masterServer.ServerType {
+		case SERVER_TYPE_DATA_BACKUP:
+			go masterServer.handleDataBackupConnection(context)
+		case SERVER_TYPE_RPC:
+			go masterServer.handleRpcConnection(context)
+			rpc.HandleHTTP()
+		default:
+			panic("server type 异常")
+		}
 
+		masterServer.WaitGroup.Add(1)
 	}
+
+	masterServer.WaitGroup.Wait()
+}
+
+//RPC 服务处理
+func (masterServer *MasterServer) handleRpcConnection(context *Context) {
+	defer func() {
+		context.Connection.Close()
+		masterServer.WaitGroup.Done()
+
+		err := recover()
+
+		if err != nil {
+			logger.AsyncInfo(fmt.Sprintf("handleRpcConnection error:%#v", err))
+		}
+	}()
+
+	rpcServer := rpc.NewServer()
+	rpcServer.Register(NewBoltDbRpcService()) //注册rpc 服务
+
+	rpcServer.Accept(context.Connection)
+
+
+
+	for {
+
+		dataPackage := GetDecodedPackageData(context.getReader(), context.Connection)
+		context.LastActiveTs = time.Now().Unix()
+
+		masterServer.handleAction(context, dataPackage)
+
+		if masterServer.isDead() {
+			panic("server is dead ")
+		}
+	}
+
+
 }
 
 //连接活跃情况检查
@@ -89,24 +175,37 @@ func (masterServer *MasterServer) doConnectionAliveCheck() {
 
 			now := time.Now().Unix()
 
+			if masterServer.isDead() {
+				context.Connection.Close()
+				masterServer.ContextList.Remove(item)
+
+				logger.AsyncInfo(fmt.Sprintf("Server宕机关闭连接, now:%#v, connection%#v", now, context))
+			}
+
 			if now - context.LastActiveTs > maxUnActiveTs {
 				context.Connection.Close()
-				logger.AsyncInfo("超时关闭连接:" + fmt.Sprintf("now:%#v, connection%#v", now, context))
+				logger.AsyncInfo(fmt.Sprintf("超时关闭连接, now:%#v, connection%#v", now, context))
 				masterServer.ContextList.Remove(item)
 			}
+		}
+
+		if masterServer.isDead() {
+			logger.AsyncInfo("master server 宕机")
+			return
 		}
 
 		time.Sleep(1 * time.Second)
 	}
 }
 
-func (masterServer *MasterServer) handleConnection(context *Context) {
+func (masterServer *MasterServer) handleDataBackupConnection(context *Context) {
 	defer func() {
 		context.Connection.Close()
+		masterServer.WaitGroup.Done() //子goroutine 退出
 
 		err := recover()
 		if err != nil {
-			logger.AsyncInfo(err)
+			logger.AsyncInfo(fmt.Sprintf("handleDataBackupConnection error:%#v", err))
 		}
 	}()
 
@@ -116,6 +215,10 @@ func (masterServer *MasterServer) handleConnection(context *Context) {
 		context.LastActiveTs = time.Now().Unix()
 
 		masterServer.handleAction(context, dataPackage)
+
+		if masterServer.isDead() {
+			panic("server is dead")
+		}
 	}
 }
 
@@ -247,115 +350,12 @@ func (masterServer *MasterServer) handleAction(context *Context, dataPacakge *Ba
 	return
 }
 
-//处理新 connection  废弃了
-func (masterServer *MasterServer) handleConnectionOld(context *Context) {
-	defer func() {
-		context.Connection.Close()
-
-		err := recover()
-		if err != nil {
-			logger.AsyncInfo(err)
-		}
-	}()
-
-	var status = STATUS_NULL //状态机
-	var dataLength int = 0
-	var err error
-	var curAction byte
-
-	ioReader := bufio.NewReader(context.Connection)
-	ioWriter := bufio.NewWriter(context.Connection)
-	socketio := bufio.NewReadWriter(ioReader, ioWriter);
-
-	FORLABEL:
-	for {
-		logger.AsyncInfo("current status: " + strconv.Itoa(status))
-		switch status {
-			case STATUS_NULL:
-				curAction, err = socketio.ReadByte()
-				if err != nil {
-					if err == io.EOF {
-						status = STATUS_NULL
-						time.Sleep(1 * time.Second)
-						logger.AsyncInfo("socket 无数据")
-						break
-					} else {
-						break FORLABEL;
-					}
-				}
-
-				logger.AsyncInfo("new action byte:" + fmt.Sprintf("%#v", curAction))
-
-				if isNewAction(curAction) {
-					dataLength, err = getDataLength(socketio)
-					status = STATUS_NEW
-					if err != nil {
-						dataLength = 0
-						status = STATUS_NULL
-					}
-				}
-
-			case STATUS_NEW:
-				err = masterServer.handleActionOld(context, curAction, socketio, dataLength)
-
-				dataLength = 0
-				status = STATUS_NULL
-
-				if err != nil {
-					logger.AsyncInfo("MasterServer, handleAction" + fmt.Sprintf("%#v", err))
-				}
-		}
-	}
-}
-
-//处理请求 废弃了
-func (masterServer *MasterServer)handleActionOld(context *Context, action byte, socketio *bufio.ReadWriter, dataLength int) error {
-	if dataLength < 0 {
-		return errors.New("数据包长度少于0")
+func (masterServer *MasterServer) isDead() bool {
+	if masterServer.ServerStatus == SERVER_STATUS_DEAD {
+		return true
 	}
 
-	logger.AsyncInfo("MasterServer, handleAction" + fmt.Sprintf("action:%#v, dataLength:%#v", action, dataLength))
-
-	if dataLength > 10000000 {
-		socketio.Discard(dataLength)
-		panic("数据包长度超过10M, 不允许")
-	}
-
-	context.updateAliveTs()
-
-	switch action {
-		case ACTION_PING:
-			socketio.Discard(dataLength)
-
-			dataPackage  := NewBackupPackage(ACTION_PING)
-			dataPackage.encodeData(int32ToBytes(int(context.LastActiveTs)))
-
-			n, err :=context.writePackage(dataPackage)
-			//context.write()
-			//socketio.Write(int32ToBytes(int(context.LastActiveTs))) // 转成package形式
-			logger.AsyncInfo(fmt.Sprintf("ping action: %#v, $#v", n, err))
-			break
-
-		case ACTION_SYNC_DATA:
-			socketio.Discard(dataLength)
-			logger.AsyncInfo("开始备份数据\t" + time.Now().Format(TIME_FORMAT) )
-
-			dataPackage := NewBackupPackage(ACTION_SYNC_DATA)
-			dataPackage.encodeData([]byte("this is data from server, " + time.Now().Format(TIME_FORMAT) + "\n"))
-
-			n, err := context.writePackage(dataPackage)
-
-			//context.Connection.Write()) // 转成package形式
-			//socketio.Flush()
-			//binary.Write(socketio, binary.BigEndian, []byte("this is data from server\n"))
-			logger.AsyncInfo(fmt.Sprintf("end备份数据\t%#v, %#v, %#v", time.Now().Format(TIME_FORMAT), n, err ))
-			break
-
-		default:
-			break
-	}
-
-	return nil
+	return false
 }
 
 //获取数据包的长度

@@ -112,7 +112,8 @@ func (application *Application) InitConfig(configFile string) {
 func (application *Application) StartDataBackUpServer() {
 
 	go func() {
-		StartMasterServer(application.ConfigData.MasterAddress)
+		masterServer := NewServer(application.ConfigData.MasterAddress, SERVER_TYPE_DATA_BACKUP)
+		masterServer.StartMasterServer()
 	}()
 }
 
@@ -132,8 +133,13 @@ func (application *Application) StartDataBackUpClient() {
 	client := NewClient(application.ConfigData.MasterAddress)
 
 	go func() {
-		StartClientBackUp(client)
+		client.StartClientBackUp()
 	}()
+}
+
+//启动rpc server端
+func (application *Application) StartRpcServer() {
+
 }
 
 //获取Mysql连接

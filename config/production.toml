@@ -15,6 +15,9 @@ serverType="master"
 #masterAddress="192.168.0.101:9000"
 masterAddress="172.16.35.246:9000"
 
+#rpc服务地址
+rpcSeverAddress="172.16.35.246:9001"
+
 #master slave 连接不活跃的时间 单位秒
 maxUnActiveTs=30
 

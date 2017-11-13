@@ -51,8 +51,8 @@ func (this *BoltDbService) NextId(source string) int {
 /*数据更新相关*/
 
 //使用事务 从db中load当前的current_id ，并增大库中的id
-func (this *BoltDbService) loadCurrentIdFromDb(source string, bucket_step int) int {
-	if source == "" || bucket_step < 1 {
+func (this *BoltDbService) loadCurrentIdFromDb(source string, bucketStep int) int {
+	if source == "" || bucketStep < 1 {
 		panic("业务参数错误，或者id递增步长错误")
 	}
 
@@ -87,14 +87,14 @@ func (this *BoltDbService) loadCurrentIdFromDb(source string, bucket_step int) i
 
 		currentId = 0
 
-		errInsert := bucket.Put([]byte(source), intToBytes(currentId + bucket_step))
+		errInsert := bucket.Put([]byte(source), intToBytes(currentId +bucketStep))
 		checkErr(errInsert)
 
 	} else {//更新记录
 
 		currentId = bytesToInt(oldCurrentId)
 
-		errUpdate := bucket.Put([]byte(source), intToBytes(currentId + bucket_step))
+		errUpdate := bucket.Put([]byte(source), intToBytes(currentId +bucketStep))
 		checkErr(errUpdate)
 	}
 
