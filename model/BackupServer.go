@@ -19,6 +19,9 @@ import (
 	"encoding/json"
 	"strings"
 	"net/rpc"
+	"encoding/gob"
+	"log"
+	"github.com/ugorji/go/codec"
 )
 
 //var	contextList *list.List
@@ -116,7 +119,6 @@ func (masterServer *MasterServer) StartMasterServer() {
 			go masterServer.handleDataBackupConnection(context)
 		case SERVER_TYPE_RPC:
 			go masterServer.handleRpcConnection(context)
-			rpc.HandleHTTP()
 		default:
 			panic("server type 异常")
 		}
@@ -143,22 +145,25 @@ func (masterServer *MasterServer) handleRpcConnection(context *Context) {
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(NewBoltDbRpcService()) //注册rpc 服务
 
-	rpcServer.Accept(context.Connection)
-
-
-
-	for {
-
-		dataPackage := GetDecodedPackageData(context.getReader(), context.Connection)
-		context.LastActiveTs = time.Now().Unix()
-
-		masterServer.handleAction(context, dataPackage)
-
-		if masterServer.isDead() {
-			panic("server is dead ")
-		}
+	//解码器
+	buf := bufio.NewWriter(context.Connection)
+	codec := &GobServerCodec{
+		rwc:    context,
+		dec:    gob.NewDecoder(context.Connection),
+		enc:    gob.NewEncoder(buf),
+		encBuf: buf,
 	}
 
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+			if masterServer.isDead() {
+				codec.Close()
+			}
+		}
+	}()
+
+	rpc.ServeCodec(codec)
 
 }
 
