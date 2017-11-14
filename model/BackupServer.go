@@ -131,20 +131,6 @@ func (masterServer *MasterServer) StartMasterServer() {
 
 //RPC 服务处理
 func (masterServer *MasterServer) handleRpcConnection(context *Context) {
-	defer func() {
-		context.Connection.Close()
-		masterServer.WaitGroup.Done()
-
-		err := recover()
-
-		if err != nil {
-			logger.AsyncInfo(fmt.Sprintf("handleRpcConnection error:%#v", err))
-		}
-	}()
-
-	rpcServer := rpc.NewServer()
-	rpcServer.Register(NewBoltDbRpcService()) //注册rpc 服务
-
 	//解码器
 	buf := bufio.NewWriter(context.Connection)
 	codec := &GobServerCodec{
@@ -154,6 +140,18 @@ func (masterServer *MasterServer) handleRpcConnection(context *Context) {
 		encBuf: buf,
 	}
 
+	defer func() {
+		codec.Close()
+		masterServer.WaitGroup.Done()
+
+		err := recover()
+
+		if err != nil {
+			logger.AsyncInfo(fmt.Sprintf("handleRpcConnection error:%#v", err))
+		}
+	}()
+
+	//master 下发退出程序
 	go func() {
 		for {
 			time.Sleep(2 * time.Second)
@@ -163,6 +161,9 @@ func (masterServer *MasterServer) handleRpcConnection(context *Context) {
 		}
 	}()
 
+	//处理rpc 业务
+	rpcServer := rpc.NewServer()
+	rpcServer.Register(NewBoltDbRpcService()) //注册rpc 服务
 	rpc.ServeCodec(codec)
 
 }
