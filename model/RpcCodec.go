@@ -9,6 +9,8 @@ import (
 	"fmt"
 )
 
+//增加一个超时 timeout 处理 cclehui_todo
+
 type GobServerCodec struct {
 	rwc    *Context
 	dec    *gob.Decoder
@@ -68,5 +70,35 @@ func (c *GobServerCodec) Close() error {
 		return nil
 	}
 	c.closed = true
+	return c.rwc.Connection.Close()
+}
+
+
+type GobClientCodec struct {
+	rwc    *Context
+	dec    *gob.Decoder
+	enc    *gob.Encoder
+	encBuf *bufio.Writer
+}
+
+func (c *GobClientCodec) WriteRequest(r *rpc.Request, body interface{}) (err error) {
+	if err = c.enc.Encode(r); err != nil {
+		return
+	}
+	if err = c.enc.Encode(body); err != nil {
+		return
+	}
+	return c.encBuf.Flush()
+}
+
+func (c *GobClientCodec) ReadResponseHeader(r *rpc.Response) error {
+	return c.dec.Decode(r)
+}
+
+func (c *GobClientCodec) ReadResponseBody(body interface{}) error {
+	return c.dec.Decode(body)
+}
+
+func (c *GobClientCodec) Close() error {
 	return c.rwc.Connection.Close()
 }
