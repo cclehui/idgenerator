@@ -8,6 +8,10 @@ import (
 	"sync"
 	"os"
 	"encoding/json"
+	"net/rpc"
+	"bufio"
+	"encoding/gob"
+	"context"
 )
 
 //var	contextList *list.List
@@ -15,6 +19,7 @@ import (
 type Client struct {
 	Context *Context
 	MasterAddress string
+	RpcClient *rpc.Client
 }
 
 //var client *Client
@@ -32,11 +37,85 @@ func NewClient(masterAddress string) *Client {
 	lock := new(sync.Mutex)
 	var context = &Context{connection, now,lock,nil,nil}
 
-	client := &Client{context, masterAddress}
+	client := &Client{
+		Context:context,
+		MasterAddress:masterAddress,
+		}
 
 	return client
 
 }
+
+func (client *Client) StartRpcClient() {
+	channelRedo := make(chan bool)
+	for {
+		go func() {
+			defer func() {
+				err := recover()
+					logger.AsyncInfo(fmt.Sprintf("RPC Server异常, %#v", err))
+
+				channelRedo <- true
+			}()
+
+			logger.AsyncInfo("启动rpc server keepalive操作")
+			client.doRpcClientKeepAlive()
+
+		}()
+		<- channelRedo
+		time.Sleep(2 * time.Second)
+	}
+
+}
+
+func (client *Client) doRpcClientKeepAlive() {
+	rpcClient := client.GetRpcClient()
+	count :=0;
+	response := 0;
+
+	for {
+		err := rpcClient.Call("BoltDbRpcService.KeepAlive", count, &response)
+		if err != nil {
+			logger.AsyncInfo(fmt.Sprintf("rpc error:%#v", err))
+
+			err = client.Context.Connection.Close()
+			logger.AsyncInfo(fmt.Sprintf("重连rpc server : %#v",err))
+			client.reConnect()//尝试重连  这里可能会panic异常
+
+			rpcClient = client.ReGetRpcClient()
+		}
+
+		logger.AsyncInfo(fmt.Sprintf("rpc KeepAlive response:%d", response))
+
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func (client *Client) GetRpcClient() *rpc.Client {
+	if client.RpcClient == nil {
+		client.RpcClient = client.newRpcClient()
+	}
+	return client.RpcClient
+}
+
+func (client *Client) ReGetRpcClient() *rpc.Client {
+	client.RpcClient = client.newRpcClient()
+	return client.RpcClient
+}
+
+func (client *Client) newRpcClient() *rpc.Client {
+	buffer := bufio.NewWriter(client.Context.Connection)
+	clientCodec := &GobClientCodec{
+		rwc:client.Context.Connection,
+		dec:    gob.NewDecoder(client.Context.Connection),
+		enc:    gob.NewEncoder(buffer),
+		encBuf: buffer,
+	}
+
+	rpcClient := rpc.NewClientWithCodec(clientCodec)
+
+	return rpcClient
+}
+
 
 //启动client 备份
 func (client *Client) StartClientBackUp()  {
@@ -52,7 +131,7 @@ func (client *Client) StartClientBackUp()  {
 			}()
 
 			logger.AsyncInfo("启动主从同步操作")
-			client.doAction()
+			client.doDatabaseBackup()
 
 
 
@@ -62,11 +141,13 @@ func (client *Client) StartClientBackUp()  {
 	}
 }
 
-func (client *Client) doAction() {
+
+//数据备份
+func (client *Client) doDatabaseBackup() {
 	defer func() {
 		err := recover()
 		if err != nil {
-			logger.AsyncInfo(fmt.Sprintf("doAction error : %#v",err))
+			logger.AsyncInfo(fmt.Sprintf("doDatabaseBackup error : %#v",err))
 
 			if _, ok := err.(*net.OpError); ok {
 				err = client.Context.Connection.Close()
@@ -196,10 +277,6 @@ func (client *Client) sendHeartBeat() {
 
 		pingPacakge := NewBackupPackage(ACTION_PING)
 		pingPacakge.encodeData(intToBytes(int(time.Now().Unix())))
-		//binary.Write(connection, binary.BigEndian, byte(ACTION_PING))
-		//binary.Write(connection, binary.BigEndian, int32(4))
-		//binary.Write(connection, binary.BigEndian, int32(time.Now().Unix()))
-		//connection.Write(ACTION_PING)
 
 		num, err := client.Context.writePackage(pingPacakge)
 		logger.AsyncInfo(fmt.Sprintf("发起心跳包: send beat, %#v, %#v", num, err))

@@ -23,6 +23,7 @@ type Application struct {
 	ConfigFileInfo os.FileInfo     //配置文件的文件信息
 	BasePath string //应用根目录
 	SocketClient *Client
+	RpcSocketClient *Client
 }
 
 var application *Application
@@ -140,6 +141,32 @@ func (application *Application) StartDataBackUpClient() {
 //启动rpc server端
 func (application *Application) StartRpcServer() {
 
+	go func() {
+		masterServer := NewServer(application.ConfigData.RpcSeverAddress, SERVER_TYPE_RPC)
+		masterServer.StartMasterServer()
+	}()
+
+}
+
+//启动 rpc client
+func (application *Application) StartRpcClient() {
+	defer func() {
+		err := recover()
+
+		logger.AsyncInfo(fmt.Sprintf("连接rpc server 异常, %#v", err))
+		if err != nil {
+			panic(err)
+		}
+
+	}()
+
+	//获取连接
+	client := NewClient(application.ConfigData.RpcSeverAddress)
+
+	go func() {
+		client.StartRpcClient()
+		application.RpcSocketClient = client
+	}()
 }
 
 //获取Mysql连接

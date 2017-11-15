@@ -7,6 +7,7 @@ import (
 	"net/rpc"
 	"idGenerator/model/logger"
 	"fmt"
+	"net"
 )
 
 //增加一个超时 timeout 处理 cclehui_todo
@@ -75,7 +76,7 @@ func (c *GobServerCodec) Close() error {
 
 
 type GobClientCodec struct {
-	rwc    *Context
+	rwc    net.Conn
 	dec    *gob.Decoder
 	enc    *gob.Encoder
 	encBuf *bufio.Writer
@@ -100,5 +101,5 @@ func (c *GobClientCodec) ReadResponseBody(body interface{}) error {
 }
 
 func (c *GobClientCodec) Close() error {
-	return c.rwc.Connection.Close()
+	return c.rwc.Close()
 }

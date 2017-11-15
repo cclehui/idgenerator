@@ -12,6 +12,11 @@ const (
 	BUCKET_NAME = "IdGeneratorBucket"
 )
 
+type BoltDbUtil interface {
+	LoadCurrentIdFromDb(source string, bucketStep int) int
+	IncrSourceCurrentId(source string, currentId int, bucketStep int) (resultCurrentId int, newDbCurrentId int)
+}
+
 type BoltDbService struct {
 	BucketName string
 }
@@ -51,7 +56,7 @@ func (this *BoltDbService) NextId(source string) int {
 /*数据更新相关*/
 
 //使用事务 从db中load当前的current_id ，并增大库中的id
-func (this *BoltDbService) loadCurrentIdFromDb(source string, bucketStep int) int {
+func (this *BoltDbService) LoadCurrentIdFromDb(source string, bucketStep int) int {
 	if source == "" || bucketStep < 1 {
 		panic("业务参数错误，或者id递增步长错误")
 	}

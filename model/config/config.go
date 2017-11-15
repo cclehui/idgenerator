@@ -14,6 +14,7 @@ type Config struct {
 	BucketStep     int    `toml: "bucketStep"`
 	ServerType     string    `toml: "serverType"`
 	MasterAddress  string      `toml: "masterAddress"`
+	RpcSeverAddress  string      `toml: "rpcSeverAddress"`
 	MaxUnActiveTs int `toml:"maxUnactiveTs"`
 	UseTransAction bool   `toml: "useTransAction"`
 	Bolt           Bolt  `toml: "bolt"`

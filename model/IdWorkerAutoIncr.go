@@ -49,7 +49,15 @@ func (worker *AutoIncrIdWorker) NextIdByBoltDb(source string) (int, error) {
 
 	var storage *singleStorage
 
-	boltDbService := NewBoltDbService()
+
+	var boltDbUtil *BoltDbUtil
+
+	if GetApplication().ConfigData.ServerType == SERVER_SLAVE {
+
+		boltDbUtil = NewBoltDbRpcClient(GetApplication().RpcSocketClient)
+	} else {
+		boltDbUtil = NewBoltDbService()
+	}
 
 	if hasOld {//内存中有
 		tempStorage, typeOk := cachedStorage.(*singleStorage)
@@ -61,7 +69,7 @@ func (worker *AutoIncrIdWorker) NextIdByBoltDb(source string) (int, error) {
 
 	} else {
 		//从db中load
-		currentId := boltDbService.loadCurrentIdFromDb(source, GetApplication().ConfigData.BucketStep)
+		currentId := boltDbUtil.loadCurrentIdFromDb(source, GetApplication().ConfigData.BucketStep)
 		currentMaxId := currentId + GetApplication().ConfigData.BucketStep
 
 		storage = &singleStorage{0, currentId, currentMaxId}
@@ -74,7 +82,7 @@ func (worker *AutoIncrIdWorker) NextIdByBoltDb(source string) (int, error) {
 	//当前id超过内存中允许的最大值了 需要增大最大值， 并持久化到boltdb中
 	if storage.CurrentId >= storage.CurrentMaxId {
 
-		newCurrentId, newMaxId := boltDbService.IncrSourceCurrentId(source, storage.CurrentId, GetApplication().ConfigData.BucketStep)
+		newCurrentId, newMaxId := boltDbUtil.IncrSourceCurrentId(source, storage.CurrentId, GetApplication().ConfigData.BucketStep)
 		logger.AsyncInfo("boltdb after update:" + source + " => " + strconv.Itoa(newMaxId))
 
 		storage.CurrentId = newCurrentId
