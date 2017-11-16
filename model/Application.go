@@ -22,7 +22,7 @@ type Application struct {
 	ConfigData  config.Config      //配置信息
 	ConfigFileInfo os.FileInfo     //配置文件的文件信息
 	BasePath string //应用根目录
-	SocketClient *Client
+	DataBackUpSocketClient *Client
 	RpcSocketClient *Client
 }
 
@@ -135,6 +135,7 @@ func (application *Application) StartDataBackUpClient() {
 
 	go func() {
 		client.StartClientBackUp()
+		application.DataBackUpSocketClient = client
 	}()
 }
 

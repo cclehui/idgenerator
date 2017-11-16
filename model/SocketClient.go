@@ -11,7 +11,7 @@ import (
 	"net/rpc"
 	"bufio"
 	"encoding/gob"
-	"context"
+	"strings"
 )
 
 //var	contextList *list.List
@@ -52,7 +52,9 @@ func (client *Client) StartRpcClient() {
 		go func() {
 			defer func() {
 				err := recover()
+				if err != nil {
 					logger.AsyncInfo(fmt.Sprintf("RPC Server异常, %#v", err))
+				}
 
 				channelRedo <- true
 			}()
@@ -77,15 +79,20 @@ func (client *Client) doRpcClientKeepAlive() {
 		if err != nil {
 			logger.AsyncInfo(fmt.Sprintf("rpc error:%#v", err))
 
-			err = client.Context.Connection.Close()
-			logger.AsyncInfo(fmt.Sprintf("重连rpc server : %#v",err))
-			client.reConnect()//尝试重连  这里可能会panic异常
+			if strings.Compare(err.Error(), "connection is shut down") == 0 {
+				time.Sleep(3 * time.Second)
 
-			rpcClient = client.ReGetRpcClient()
+				err = client.Context.Connection.Close()
+				logger.AsyncInfo(fmt.Sprintf("重连rpc server : %#v",err))
+				client.reConnect()//尝试重连  这里可能会panic异常
+
+				rpcClient = client.ReGetRpcClient()
+			}
+
 		}
 
 		logger.AsyncInfo(fmt.Sprintf("rpc KeepAlive response:%d", response))
-
+		count++
 		time.Sleep(5 * time.Second)
 	}
 }

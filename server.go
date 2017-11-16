@@ -39,6 +39,9 @@ func main() {
 			logger.AsyncInfo("启动备份server端程序")
 			application.StartDataBackUpServer()
 
+			logger.AsyncInfo("启动 rpc server")
+			application.StartRpcServer()
+
 		case model.SERVER_SLAVE:
 
 			port = "8183"
@@ -48,7 +51,8 @@ func main() {
 			application.ConfigData.Bolt.FilePath +=  ".backup"
 			application.StartDataBackUpClient()
 
-			logger.AsyncInfo("启动slave server数据通道")
+			logger.AsyncInfo("启动rpc client")
+			application.StartRpcClient()
 
 		default:
 			logger.AsyncInfo("输入参数:" + serverInstancType)

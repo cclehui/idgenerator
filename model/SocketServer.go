@@ -12,7 +12,6 @@ import (
 	"container/list"
 	"idGenerator/model/logger"
 	"math"
-	"strconv"
 	"sync"
 	"os"
 	"path"
@@ -20,8 +19,6 @@ import (
 	"strings"
 	"net/rpc"
 	"encoding/gob"
-	"log"
-	"github.com/ugorji/go/codec"
 )
 
 //var	contextList *list.List
@@ -157,6 +154,7 @@ func (masterServer *MasterServer) handleRpcConnection(context *Context) {
 			time.Sleep(2 * time.Second)
 			if masterServer.isDead() {
 				codec.Close()
+				break
 			}
 		}
 	}()
@@ -164,7 +162,7 @@ func (masterServer *MasterServer) handleRpcConnection(context *Context) {
 	//处理rpc 业务
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(NewBoltDbRpcService()) //注册rpc 服务
-	rpc.ServeCodec(codec)
+	rpcServer.ServeCodec(codec)
 
 }
 

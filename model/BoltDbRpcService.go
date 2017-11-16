@@ -3,24 +3,18 @@ package model
 import (
 	"errors"
 	"fmt"
-	"net"
-	"time"
-	"net/rpc"
-	"sync"
 )
 
 type BoltDbRpcService  struct {
 	BoltDbService *BoltDbService
 }
 
-
-
-type loadCurrentIdFromDbArgs struct {
+type LoadCurrentIdFromDbArgs struct {
 	Source string
 	BucketStep int
 }
 
-func (this *BoltDbRpcService) LoadCurrentIdFromDb(args *loadCurrentIdFromDbArgs, result *int) (err error) {
+func (this *BoltDbRpcService) LoadCurrentIdFromDb(args *LoadCurrentIdFromDbArgs, result *int) (err error) {
 
 	defer func() {
 		errRecovered := recover()
@@ -30,7 +24,7 @@ func (this *BoltDbRpcService) LoadCurrentIdFromDb(args *loadCurrentIdFromDbArgs,
 		}
 	}()
 
-	*result = this.BoltDbService.loadCurrentIdFromDb(args.Source, args.BucketStep)
+	*result = this.BoltDbService.LoadCurrentIdFromDb(args.Source, args.BucketStep)
 	return err
 }
 
@@ -72,6 +66,7 @@ func NewBoltDbRpcService() *BoltDbRpcService {
 	return &BoltDbRpcService{NewBoltDbService()}
 }
 
+/******************************************************/
 type BoltDbRpcClient struct {
 	Client *Client
 }
@@ -83,7 +78,7 @@ func NewBoltDbRpcClient(socketClient *Client) *BoltDbRpcClient {
 
 func(this *BoltDbRpcClient) LoadCurrentIdFromDb(source string, bucketStep int) int {
 
-	args := loadCurrentIdFromDbArgs{Source:source, BucketStep:bucketStep}
+	args := LoadCurrentIdFromDbArgs{Source:source, BucketStep:bucketStep}
 	result := 0
 
 	err := this.Client.GetRpcClient().Call("BoltDbRpcService.LoadCurrentIdFromDb", args, &result)
