@@ -132,10 +132,10 @@ func (application *Application) StartDataBackUpClient() {
 
 	//获取连接
 	client := NewClient(application.ConfigData.MasterAddress)
+	application.DataBackUpSocketClient = client
 
 	go func() {
 		client.StartClientBackUp()
-		application.DataBackUpSocketClient = client
 	}()
 }
 
@@ -163,10 +163,10 @@ func (application *Application) StartRpcClient() {
 
 	//获取连接
 	client := NewClient(application.ConfigData.RpcSeverAddress)
+	application.RpcSocketClient = client
 
 	go func() {
 		client.StartRpcClient()
-		application.RpcSocketClient = client
 	}()
 }
 

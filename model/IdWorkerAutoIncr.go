@@ -49,7 +49,6 @@ func (worker *AutoIncrIdWorker) NextIdByBoltDb(source string) (int, error) {
 
 	var storage *singleStorage
 
-
 	var boltDbUtil BoltDbUtil
 
 	if GetApplication().ConfigData.ServerType == SERVER_SLAVE {

@@ -51,7 +51,8 @@ func (this *BoltDbRpcService) IncrSourceCurrentId(args *IncrSourceCurrentIdArgs,
 
 	resultCurrentId, newDbCurrentId := this.BoltDbService.IncrSourceCurrentId(args.Source, args.CurrentId, args.BucketStep)
 
-	result = &IncrSourceCurrentIdResult{resultCurrentId, newDbCurrentId}
+	result.ResultCurrentId = resultCurrentId
+	result.NewDbCurrentId = newDbCurrentId
 
 	return err
 }
@@ -72,6 +73,9 @@ type BoltDbRpcClient struct {
 }
 
 func NewBoltDbRpcClient(socketClient *Client) *BoltDbRpcClient {
+	if socketClient == nil {
+		panic("rpc socket client 为 nil")
+	}
 	return &BoltDbRpcClient{socketClient}
 }
 
@@ -90,9 +94,9 @@ func(this *BoltDbRpcClient) LoadCurrentIdFromDb(source string, bucketStep int) i
 func(this *BoltDbRpcClient)  IncrSourceCurrentId(source string, currentId int, bucketStep int) (resultCurrentId int, newDbCurrentId int) {
 
 	args := IncrSourceCurrentIdArgs{Source:source, CurrentId:currentId, BucketStep:bucketStep}
-	result := IncrSourceCurrentIdResult{}
+	result := new(IncrSourceCurrentIdResult)
 
-	err := this.Client.GetRpcClient().Call("BoltDbRpcService.IncrSourceCurrentId", args, &result)
+	err := this.Client.GetRpcClient().Call("BoltDbRpcService.IncrSourceCurrentId", args, result)
 	CheckErr(err)
 
 	return result.ResultCurrentId, result.NewDbCurrentId
