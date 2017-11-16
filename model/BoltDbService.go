@@ -14,7 +14,7 @@ const (
 
 type BoltDbUtil interface {
 	LoadCurrentIdFromDb(source string, bucketStep int) int
-	IncrSourceCurrentId(source string, currentId int, bucketStep int) (resultCurrentId int, newDbCurrentId int)
+	IncrSourceCurrentId(source string, currentId int, bucketStep int) (int, int)
 }
 
 type BoltDbService struct {

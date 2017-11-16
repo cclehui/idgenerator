@@ -50,13 +50,12 @@ func (worker *AutoIncrIdWorker) NextIdByBoltDb(source string) (int, error) {
 	var storage *singleStorage
 
 
-	var boltDbUtil *BoltDbUtil
+	var boltDbUtil BoltDbUtil
 
 	if GetApplication().ConfigData.ServerType == SERVER_SLAVE {
-
-		boltDbUtil = NewBoltDbRpcClient(GetApplication().RpcSocketClient)
+		boltDbUtil = NewBoltDbRpcClient(GetApplication().RpcSocketClient) // slave 通过 rpc 方式
 	} else {
-		boltDbUtil = NewBoltDbService()
+		boltDbUtil = NewBoltDbService()  //master直接落地磁盘
 	}
 
 	if hasOld {//内存中有
@@ -69,7 +68,7 @@ func (worker *AutoIncrIdWorker) NextIdByBoltDb(source string) (int, error) {
 
 	} else {
 		//从db中load
-		currentId := boltDbUtil.loadCurrentIdFromDb(source, GetApplication().ConfigData.BucketStep)
+		currentId := boltDbUtil.LoadCurrentIdFromDb(source, GetApplication().ConfigData.BucketStep)
 		currentMaxId := currentId + GetApplication().ConfigData.BucketStep
 
 		storage = &singleStorage{0, currentId, currentMaxId}

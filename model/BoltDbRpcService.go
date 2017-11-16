@@ -81,7 +81,7 @@ func NewBoltDbRpcClient(socketClient *Client) *BoltDbRpcClient {
 }
 
 
-func(this *BoltDbRpcClient) loadCurrentIdFromDb(source string, bucketStep int) int {
+func(this *BoltDbRpcClient) LoadCurrentIdFromDb(source string, bucketStep int) int {
 
 	args := loadCurrentIdFromDbArgs{Source:source, BucketStep:bucketStep}
 	result := 0

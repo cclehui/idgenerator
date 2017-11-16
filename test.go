@@ -41,6 +41,16 @@ func doAction() {
 	panic("异常111111111111：" + strconv.Itoa(int(time.Now().Unix())))
 }
 
+type TestBase interface {
+	Test(int) int
+}
+
+type TestA struct {
+}
+
+func (this *TestA) Test(data int) int {
+	return data + 1
+}
 
 
 //每个业务对应一个 key 全局唯一
@@ -49,31 +59,9 @@ func doAction() {
 
 func main() {
 
-
-	channelRedo := make(chan bool)
-	for {
-		defer func() {
-			err := recover()
-			logger.AsyncInfo(fmt.Sprintf("for xdddddddddddd, %#v", err))
-		}()
-
-		go func() {
-			defer func() {
-				err := recover()
-				logger.AsyncInfo(fmt.Sprintf("主从同步异常, %#v", err))
-
-				channelRedo <- true
-			}()
-
-			logger.AsyncInfo("启动主从同步操作")
-			doAction()
-
-
-
-		}()
-		<- channelRedo
-		time.Sleep(2 * time.Second)
-	}
+	//var dataUtil TestBase;
+	//
+	//dataUtil = &TestA{}
 
 	data := make(map[string]string)
 	data["md5"] = model.CaculteFileMd5("./data/bolt_kv.db.backup")
