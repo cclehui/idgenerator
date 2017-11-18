@@ -7,10 +7,10 @@ import(
 	"encoding/binary"
 	"bytes"
 	"time"
-	"idGenerator/model"
 	"fmt"
 	"idGenerator/model/logger"
 	"strconv"
+	"runtime"
 )
 
 func bytesToInt32(b []byte) int32 {
@@ -52,23 +52,55 @@ func (this *TestA) Test(data int) int {
 	return data + 1
 }
 
-
 //每个业务对应一个 key 全局唯一
 //var idWorkerMap = make(map[int]*idGenerator.IdWorker)
 //var idWorkerMap = cmap.New();
 
 func main() {
 
+	defer func() {
+		err := recover()
+
+		fmt.Printf("main recover: %#v", err)
+	}()
+
+	go func() {
+		defer func() {
+			err := recover()
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		}()
+
+		fmt.Println("1111111111111111111")
+
+		go func() {
+			panic("zzzzzzzzzzzz")
+		}()
+
+		runtime.Goexit()
+	}()
+
+	for {
+		time.Sleep(1 * time.Second)
+	}
+
+	//context.Context()
+
+	//context.Context()
+
 	//var dataUtil TestBase;
 	//
 	//dataUtil = &TestA{}
 
-	data := make(map[string]string)
-	data["md5"] = model.CaculteFileMd5("./data/bolt_kv.db.backup")
-	data["ts"] = time.Now().Format(model.TIME_FORMAT)
-	data["xxx"] = model.CaculteFileMd5("./README.md")
-
-	fmt.Println(data)
+	//data := make(map[string]string)
+	//data["md5"] = model.CaculteFileMd5("./data/bolt_kv.db.backup")
+	//data["ts"] = time.Now().Format(model.TIME_FORMAT)
+	//data["xxx"] = model.CaculteFileMd5("./README.md")
+	//
+	//fmt.Println(data)
 
 	//encodedData, _ := json.Marshal(data)
 	//
